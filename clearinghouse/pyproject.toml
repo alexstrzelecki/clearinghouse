@@ -1,10 +1,11 @@
 [project]
 name = "clearinghouse"
 version = "0.1.0"
-description = "Add your description here"
+description = "API Server for making and clearing Schwab transactions"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.115.8",
     "ruff>=0.9.6",
     "schwabdev>=2.5.0",
 ]
