@@ -12,7 +12,7 @@ uv sync
 TBD
 
 ## Testing
-Run all tests with 
+Run all tests with
 ```bash
 uv run -m pytest
 ```
