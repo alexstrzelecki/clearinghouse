@@ -1,0 +1,10 @@
+[project]
+name = "clearinghouse"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ruff>=0.9.6",
+    "schwabdev>=2.5.0",
+]
