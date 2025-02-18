@@ -9,7 +9,10 @@ uv sync
 ```
 
 ## Usage
-TBD
+Run the dev server with the following:
+```bash
+uv run fastapi dev clearinghouse/main.py
+```
 
 ## Testing
 Run all tests with
