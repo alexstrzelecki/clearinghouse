@@ -33,7 +33,7 @@ class Order(BaseModel):
     ticker: str
     price: float
     operation: OrderOperation
-    order_type: OrderType
+    order_type: OrderType = OrderType.market
     amount: int | float
-    amount_type: OrderAmountType
-    duration: OrderDuration
+    amount_type: OrderAmountType = OrderAmountType.shares
+    duration: OrderDuration = OrderDuration.day
