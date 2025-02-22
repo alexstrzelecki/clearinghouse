@@ -13,7 +13,8 @@ Install the pre-commit hook:
 pre-commit install
 ```
 
-Setup envvar for secrets
+Setup envvar for secrets or use a dotfile (`.env`) with the same variables.
+`.env` file will be used before envvar if both are present.
 ```bash
 export SCHWAB_APP_KEY="<insert value here>"
 export SCHWAB_APP_SECRET="<insert value here>"
