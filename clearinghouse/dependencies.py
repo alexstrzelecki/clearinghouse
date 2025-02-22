@@ -2,7 +2,17 @@ import os
 
 import schwabdev
 import schedule
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
+class EnvSettings(BaseSettings):
+    """
+    Boilerplate settings file to get secrets from a dotenv
+    """
+    schwab_app_key: str = ""
+    schwab_app_secret: str = ""
+
+    model_config = SettingsConfigDict(env_file=".env")
 
 
 class SchwabService:
@@ -25,9 +35,9 @@ class SchwabService:
             Forces the renewal of tokens, updating both access and refresh tokens.
     """
 
-    def __init__(self):
-        self.app_key = os.environ.get("SCHWAB_APP_KEY")
-        self.app_secret = os.environ.get("SCHWAB_APP_SECRET")
+    def __init__(self, env_settings: EnvSettings):
+        self.app_key = env_settings.schwab_app_key or os.environ.get("SCHWAB_APP_KEY")
+        self.app_secret = env_settings.schwab_app_secret or os.environ.get("SCHWAB_APP_SECRET")
         self._cache = {}
 
         self.client = self._schwab_client()
