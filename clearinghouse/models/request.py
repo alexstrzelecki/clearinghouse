@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from typing import Union
+
+from pydantic import BaseModel, Field
 from enum import Enum
 
 
@@ -30,10 +32,10 @@ class OrderDuration(str, Enum):
 
 
 class Order(BaseModel):
-    ticker: str
-    price: float
-    operation: OrderOperation
-    order_type: OrderType = OrderType.market
-    amount: int | float
-    amount_type: OrderAmountType = OrderAmountType.shares
-    duration: OrderDuration = OrderDuration.day
+    ticker: str = Field(..., alias="ticker")
+    price: float = Field(..., alias="price")
+    operation: OrderOperation = Field(..., alias="operation")
+    orderType: OrderType = Field(OrderType.market, alias="order_type")
+    amount: Union[int, float] = Field(..., alias="amount")
+    amountType: OrderAmountType = Field(OrderAmountType.shares, alias="amount_type")
+    duration: OrderDuration = Field(OrderDuration.day, alias="duration")

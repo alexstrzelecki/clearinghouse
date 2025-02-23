@@ -5,6 +5,11 @@ from datetime import datetime
 
 import msgspec
 
+"""
+Empirically derived data models from the Schwab API.
+"""
+
+
 @dataclass
 class EquityPosition:
     ticker: str
