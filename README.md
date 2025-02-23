@@ -1,6 +1,9 @@
 # clearinghouse
 API Server for making and clearing Schwab transactions
 
+This project is in active development and has no expectations of a stable API between major versions.
+Use at your own risk.
+
 ## Installation
 
 Install `uv` package manager separately. Install dev dependencies:
