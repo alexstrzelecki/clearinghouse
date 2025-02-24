@@ -1,14 +1,11 @@
 from typing import List, Dict, Any
 
-import schwabdev
 from fastapi import APIRouter, Depends, HTTPException
-import msgspec
 from starlette import status
 
-from clearinghouse.dependencies import SchwabService
 from clearinghouse.models.request import Order as RequestOrder
 from clearinghouse.models.response import (
-    Order,
+    SubmittedOrder,
     Quote,
     Transaction,
     Lot,
@@ -18,22 +15,25 @@ from clearinghouse.models.response import (
 )
 
 
-def create_order_endpoints(schwab_service: SchwabService):
+def create_order_endpoints():
     order_router = APIRouter(prefix="/v1", tags=["orders"])
 
     @order_router.get(
         "/orders",
         status_code=status.HTTP_200_OK,
-        response_model=GenericCollectionResponse[Order]
+        response_model=GenericCollectionResponse[SubmittedOrder]
     )
     def get_orders() -> Dict[str, Any]:
+        """
+        TODO: add flags for order filtering / sorting
+        """
         return []
 
 
     @order_router.post(
         "/orders",
         status_code=status.HTTP_201_CREATED,
-        response_model=GenericItemResponse[Order]
+        response_model=GenericItemResponse[SubmittedOrder]
     )
     def place_order(order: RequestOrder) -> Dict[str, Any]:
         # TODO: add payload verification
@@ -42,7 +42,7 @@ def create_order_endpoints(schwab_service: SchwabService):
     @order_router.get(
         "/orders/{orderId}",
         status_code=status.HTTP_200_OK,
-        response_model=GenericItemResponse[Order]
+        response_model=GenericItemResponse[SubmittedOrder]
     )
     def order_details(order_id: str) -> Dict[str, Any]:
         pass
@@ -85,7 +85,7 @@ def create_order_endpoints(schwab_service: SchwabService):
     @order_router.post(
         "/orders/batch",
         status_code=status.HTTP_201_CREATED,
-        response_model=GenericCollectionResponse[Order]
+        response_model=GenericCollectionResponse[SubmittedOrder]
     )
     def place_batch_order(orders: List[RequestOrder]) -> Dict[str, Any]:
         """

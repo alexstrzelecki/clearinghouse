@@ -1,16 +1,19 @@
-from typing import List, Dict, Any
+from typing import Dict, Any
 
 from fastapi import APIRouter, HTTPException
 from starlette import status
 
-from clearinghouse.dependencies import SchwabService
+from clearinghouse.main import get_global_schwab_service
 from clearinghouse.models.response import (
     GenericCollectionResponse,
     GenericItemResponse
 )
 
 
-def create_status_endpoints(schwab_service: SchwabService):
+schwab_service = get_global_schwab_service()
+
+
+def create_status_endpoints():
     status_router = APIRouter(prefix="/v1", tags=["status"])
 
     @status_router.get(
@@ -37,7 +40,7 @@ def create_status_endpoints(schwab_service: SchwabService):
     @status_router.get(
         "/accounts",
         status_code=status.HTTP_200_OK,
-        response_model=GenericCollectionResponse[Dict[str, Any]]  # clarify what the Schwab response is
+        response_model=GenericCollectionResponse[Dict[str, Any]]  # TODO: clarify what the Schwab response is
     )
     def get_account_details_all() -> Dict[str, Any]:
         # TODO: support all additional arguments for account details
@@ -51,7 +54,7 @@ def create_status_endpoints(schwab_service: SchwabService):
         #
         # return resp.json()
 
-        return []
+        return {}
 
     @status_router.get(
         "/accounts/{account_hash}",
