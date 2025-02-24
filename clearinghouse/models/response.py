@@ -1,8 +1,34 @@
-from typing import List
+from typing import List, Dict, Optional, Any
 import datetime
 
 from pydantic import BaseModel, Field
+
+from typing import Generic, TypeVar
+from pydantic import BaseModel
+from pydantic.generics import GenericModel
+
 import clearinghouse.models.request as request
+
+
+T = TypeVar("T", bound=BaseModel)
+
+
+class Meta(BaseModel):
+    type: str
+    timestamp: datetime.datetime
+    request_duration: datetime.timedelta
+
+
+class BaseResponse(GenericModel):
+    meta: Meta
+
+
+class GenericItemResponse(BaseResponse, Generic[T]):
+    data: T
+
+
+class GenericCollectionResponse(BaseResponse, Generic[T]):
+    data: List[T]
 
 
 class Order(BaseModel):
@@ -31,6 +57,7 @@ class Quote(BaseModel):
 class Transaction(BaseModel):
     """
     Simplified transaction model for the original Schwab API return model.
+    TODO: finish the attr collection for this
     """
     orderId: str = Field(..., alias="order_id")
 
