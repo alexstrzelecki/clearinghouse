@@ -1,7 +1,10 @@
 # clearinghouse
 API Server for making and clearing Schwab transactions
 
-This project is in active development and has no expectations of a stable API between major versions.
+## Disclaimer
+This project is in active development and will likely not have a stable API between minor versions.
+This is not an official Schwab product and comes with no warranty or guarantee of proper operation.
+
 Use at your own risk.
 
 ## Installation
