@@ -51,7 +51,7 @@ def create_order_endpoints():
         "/orders/{orderId}",
         status_code=status.HTTP_204_NO_CONTENT,
     )
-    def delete_order(order_id: str) -> Dict[str, Any]:
+    def delete_order(order_id: str) -> None:
         # TODO: return the object being deleted? Check schwab api docs
         pass
 

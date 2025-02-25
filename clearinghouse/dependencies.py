@@ -118,6 +118,8 @@ class LocalSchwabClient(schwabdev.Client):
     def _generate_response(data: Any, is_enc_json: bool = False, status_code: int = 200) -> requests.Response:
         resp = requests.models.Response()
         resp.status_code = status_code
+
+        # if data:
         resp._content = json.dumps(data).encode("utf-8") if not is_enc_json else data
         return resp
 
@@ -172,6 +174,9 @@ class LocalSchwabService(SchwabService):
 
     def _schwab_client(self) -> schwabdev.Client:
         return LocalSchwabClient()
+
+    def set_default_trading_account(self, account_number: Optional[str] = None):
+        ...
 
     def refresh_token(self) -> str:
         return ""
