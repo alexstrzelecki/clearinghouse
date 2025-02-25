@@ -1,13 +1,11 @@
-from typing import List, Dict, Optional, Any
+from typing import List
 import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from typing import Generic, TypeVar
 from pydantic import BaseModel
 from pydantic.generics import GenericModel
-
-import clearinghouse.models.request as request
 
 
 T = TypeVar("T", bound=BaseModel)
@@ -31,7 +29,7 @@ class GenericCollectionResponse(BaseResponse, Generic[T]):
     data: List[T]
 
 
-class Order(BaseModel):
+class SubmittedOrder(BaseModel):
     """
     Simplified transaction model for the original Schwab API return model.
     """

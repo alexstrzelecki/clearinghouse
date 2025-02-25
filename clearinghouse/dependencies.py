@@ -1,9 +1,14 @@
+import datetime
 import os
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
+import json
 
+import requests
 import schwabdev
 import schedule
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+import clearinghouse.data.sample_data as sample_data
 
 
 class EnvSettings(BaseSettings):
@@ -41,9 +46,9 @@ class SchwabService:
     def __init__(self, env_settings: EnvSettings):
         self.app_key = env_settings.schwab_app_key or os.environ.get("SCHWAB_APP_KEY")
         self.app_secret = env_settings.schwab_app_secret or os.environ.get("SCHWAB_APP_SECRET")
-        self.use_default_trading_account = (env_settings.use_default_trading_account or
+        self.use_default_trading_account = (env_settings.schwab_use_default_trading_account or
                                             os.environ.get("SCHWAB_USE_DEFAULT_TRADING_ACCOUNT"))
-        self.account_number = (env_settings.schwab_default_trading_account_id or
+        self.account_number = (env_settings.schwab_trading_account_number or
                                    os.environ.get("SCHWAB_TRADING_ACCOUNT_NUMBER"))
         self.account_hash: str = ""
 
@@ -73,9 +78,7 @@ class SchwabService:
             if not account_info:
                 raise ValueError("No accounts linked. Check Schwab developer portal.")
             self.account_number = account_info[0]["accountNumber"]
-            self.account_hash = account_info[0]["accountHash"]
-
-
+            self.account_hash = account_info[0]["hashValue"]
         else:
             self.account_number = account_number or self.account_number
             if not self.account_number:
@@ -99,3 +102,79 @@ class SchwabService:
         Force renew the refresh token.
         """
         return self.client.tokens.update_tokens(force_refresh_token=True)
+
+
+class LocalSchwabClient(schwabdev.Client):
+    """
+    A local-only client that aims to be used for integration testing and does
+    not require an external connection or valid API keys.
+
+    TODO: fill all methods with representative data.
+    """
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def _generate_response(data: Any, is_enc_json: bool = False, status_code: int = 200) -> requests.Response:
+        resp = requests.models.Response()
+        resp.status_code = status_code
+        resp._content = json.dumps(data).encode("utf-8") if not is_enc_json else data
+        return resp
+
+    def account_linked(self) -> requests.Response:
+        data = {
+            "accountNumber": "1234",
+            "hashValue": "abcde",
+        }
+        return self._generate_response(data)
+
+    def account_details_all(self, fields: str = None) -> requests.Response:
+        return self._generate_response(sample_data.ACCOUNT_DETAILS_ALL)
+
+    def account_details(self, accountHash: str, fields: str = None) -> requests.Response:
+        return self._generate_response(sample_data.ACCOUNT_DETAILS)
+
+    def account_orders(self, accountHash: str, fromEnteredTime: datetime.datetime | str, toEnteredTime: datetime.datetime | str, maxResults: int = None, status: str = None) -> requests.Response:
+        return self._generate_response(sample_data.ACCOUNT_ORDERS_ALL)
+
+    def order_place(self, accountHash: str, order: dict) -> requests.Response:
+        # TODO: confirm what is returned
+        return self._generate_response({}, status_code=201)
+
+    def order_cancel(self, accountHash: str, orderId: int | str) -> requests.Response:
+        # TODO: confirm status code
+        return self._generate_response(None, status_code=204)
+
+    def order_replace(self, accountHash: str, orderId: int | str, order: dict) -> requests.Response:
+        data = None
+        # TODO: confirm status code
+        return self._generate_response(data, status_code=201)
+
+    def account_orders_all(self, fromEnteredTime: datetime.datetime | str, toEnteredTime: datetime.datetime | str, maxResults: int = None, status: str = None) -> requests.Response:
+        return self._generate_response(sample_data.ACCOUNT_ORDERS_ALL)
+
+    def transactions(self, accountHash: str, startDate: datetime.datetime | str, endDate: datetime.datetime | str, types: str, symbol: str = None) -> requests.Response:
+        return self._generate_response(sample_data.TRANSACTIONS)
+
+    def quotes(self, symbols : list[str] | str, fields: str = None, indicative: bool = False) -> requests.Response:
+        return self._generate_response(sample_data.QUOTES)
+
+    def quote(self, symbol_id: str, fields: str = None) -> requests.Response:
+        return self._generate_response(sample_data.QUOTES.get("AMD"))
+
+    def transaction_details(self, accountHash: str, transactionId: str | int) -> requests.Response:
+        return self._generate_response(sample_data.TRANSACTION_DETAILS)
+
+
+class LocalSchwabService(SchwabService):
+    def __init__(self):
+        super().__init__(EnvSettings())
+
+    def _schwab_client(self) -> schwabdev.Client:
+        return LocalSchwabClient()
+
+    def refresh_token(self) -> str:
+        return ""
+
+    def _renew_refresh_token(self) -> str:
+        return ""

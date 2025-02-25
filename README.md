@@ -34,3 +34,8 @@ Run all tests with
 ```bash
 uv run -m pytest
 ```
+
+
+## Limitations
+This service does not implement all parts of the Schwab Trader API including those around options.
+These may or may not come in the future.
