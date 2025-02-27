@@ -17,15 +17,15 @@ class Meta(BaseModel):
     # request_duration: Optional[datetime.timedelta]  # TODO: implement this via middleware
 
 
-class BaseResponse(GenericModel):
+class BaseResponse(GenericModel, Generic[T]):
     meta: Meta
 
 
-class GenericItemResponse(BaseResponse, Generic[T]):
+class GenericItemResponse(BaseResponse[T]):
     data: T
 
 
-class GenericCollectionResponse(BaseResponse, Generic[T]):
+class GenericCollectionResponse(BaseResponse[T]):
     data: List[T]
 
 
