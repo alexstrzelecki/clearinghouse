@@ -14,7 +14,7 @@ T = TypeVar("T", bound=BaseModel)
 class Meta(BaseModel):
     type: str
     timestamp: datetime.datetime
-    request_duration: datetime.timedelta
+    # request_duration: Optional[datetime.timedelta]  # TODO: implement this via middleware
 
 
 class BaseResponse(GenericModel):

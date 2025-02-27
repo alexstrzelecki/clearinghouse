@@ -13,6 +13,7 @@ from clearinghouse.models.response import (
     GenericItemResponse,
     GenericCollectionResponse
 )
+from clearinghouse.services.response_generation import generate_generic_response
 
 
 def create_order_endpoints():
@@ -27,8 +28,8 @@ def create_order_endpoints():
         """
         TODO: add flags for order filtering / sorting
         """
-        return []
-
+        data = []
+        return generate_generic_response("OrdersList", data)
 
     @order_router.post(
         "/orders",
@@ -37,7 +38,8 @@ def create_order_endpoints():
     )
     def place_order(order: RequestOrder) -> Dict[str, Any]:
         # TODO: add payload verification
-        ...
+        data = None
+        return generate_generic_response("SubmittedOrder", data)
 
     @order_router.get(
         "/orders/{orderId}",
@@ -45,7 +47,8 @@ def create_order_endpoints():
         response_model=GenericItemResponse[SubmittedOrder]
     )
     def order_details(order_id: str) -> Dict[str, Any]:
-        pass
+        data = None
+        return generate_generic_response("OrderDetails", data)
 
     @order_router.delete(
         "/orders/{orderId}",
@@ -62,7 +65,8 @@ def create_order_endpoints():
     )
     def get_transactions() -> Dict[str, Any]:
         # TODO: add filtering parameters
-        pass
+        data = []
+        return generate_generic_response("TransactionsList", data)
 
     @order_router.get(
         "/quotes/{ticker}",
@@ -71,7 +75,8 @@ def create_order_endpoints():
     )
     def get_quote(ticker: str) -> Dict[str, Any]:
         # TODO: add parameter for equity vs option
-        return None
+        data = None
+        return generate_generic_response("Quote", data)
 
 
     @order_router.post(
@@ -80,7 +85,8 @@ def create_order_endpoints():
         response_model=GenericCollectionResponse[Quote],
     )
     def get_bulk_quotes(tickers: List[str]) -> Dict[str, Any]:
-        return []
+        data = []
+        return generate_generic_response("QuotesList", data)
 
     @order_router.post(
         "/orders/batch",
@@ -92,6 +98,7 @@ def create_order_endpoints():
         Can be used to % change a list of positions.
         """
         # TODO: query parameter for percentage vs. absolute.
-        return []
+        data = []
+        return generate_generic_response("SubmittedOrdersList", data)
 
     return order_router

@@ -8,6 +8,7 @@ from clearinghouse.models.response import (
     GenericCollectionResponse,
     GenericItemResponse
 )
+from clearinghouse.services.response_generation import generate_generic_response
 
 
 def create_status_endpoints(schwab_service: SchwabService):
@@ -31,7 +32,7 @@ def create_status_endpoints(schwab_service: SchwabService):
                 detail="Failed to retrieve linked accounts from Schwab service."
             )
 
-        return resp.json()
+        return generate_generic_response("LinkedAccounts", resp.json())
 
     # account details
     @status_router.get(
@@ -67,6 +68,6 @@ def create_status_endpoints(schwab_service: SchwabService):
                 detail="Failed to retrieve account details from Schwab service."
             )
 
-        return resp.json()
+        return generate_generic_response("AccountDetails", resp.json())
 
     return status_router
