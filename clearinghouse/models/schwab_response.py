@@ -29,7 +29,7 @@ class Transaction(msgspec.Struct, kw_only=True):
     subAccount: str
     tradeDate: datetime
     positionId: int
-    orderId: int
+    # orderId: int
     netAmount: float
     transferItems: List[InstrumentObj] | None = None
 

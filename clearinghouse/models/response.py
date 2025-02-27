@@ -62,15 +62,15 @@ class Transaction(BaseModel):
 
 class Lot(BaseModel):
     acquisitionDate: datetime.datetime = Field(..., alias="acquisition_date")
-    quantity: int
+    quantity: float
     price: float
 
 
 class Position(BaseModel):
     ticker: str
-    quantity: int  # assume no fractional shares
+    quantity: float
     lots: List[Lot]
-    currentValue: float = Field(..., alias="current_value")
+    marketValue: float = Field(..., alias="market_value")
     entryValue: float = Field(..., alias="entry_value")
-    percentageChange: float = Field(..., alias="percentage_change")
+    netChange: float = Field(..., alias="net_change")
     accountFraction: float = Field(..., alias="account_fraction")
