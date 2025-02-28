@@ -35,7 +35,18 @@ class SubmittedOrder(BaseModel):
     """
     orderId: str = Field(..., alias="order_id")
     isFilled: bool = Field(..., alias="is_filled")
-    total: float
+    total: float = Field(..., alias="total")
+    duration: str = Field(..., alias="duration")
+    orderType: str = Field(..., alias="order_type")
+    price: float = Field(..., alias="price")
+    quantity: float = Field(..., alias="quantity")
+    filledQuantity: float = Field(..., alias="filled_quantity")
+    remainingQuantity: float = Field(..., alias="remaining_quantity")
+    status: str = Field(..., alias="status")
+    enteredTime: datetime.datetime = Field(..., alias="entered_time")
+    cancelTime: datetime.datetime = Field(..., alias="cancel_time")
+    session: str = Field(..., alias="session")
+    cancelable: bool = Field(..., alias="cancelable")
 
 
 class Quote(BaseModel):

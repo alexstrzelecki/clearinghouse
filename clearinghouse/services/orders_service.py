@@ -53,9 +53,9 @@ def fetch_orders(
         maxResults=max_results,
         status=status_arg,
     )
-    decoded_resp = msgspec.json.decode(resp.content, type=List[schwab_response.SubmittedOrder])
+    decoded_resp = msgspec.json.decode(resp.content, type=List[schwab_response.Order])
 
-    return [schwab_to_ch_order(o) for o in decoded_resp]
+    return [schwab_to_ch_order(k) for k in decoded_resp]
 
 
 def fetch_positions(schwab_service: SchwabService, **kwargs) -> List[Position]:
@@ -173,5 +173,20 @@ def schwab_to_ch_quote(asset: schwab_response.Asset) -> Quote:
     )
 
 
-def schwab_to_ch_order() -> SubmittedOrder:
-    raise NotImplementedError("Mapping function not implemented.")
+def schwab_to_ch_order(order: schwab_response.Order) -> SubmittedOrder:
+    return SubmittedOrder(
+        order_id=str(order.orderId),  # TODO: Confirm if str or int
+        is_filled=(order.filledQuantity == order.quantity),
+        total=order.price * order.quantity,
+        duration=order.duration,
+        order_type=order.orderType,
+        price=order.price,
+        quantity=order.quantity,
+        filled_quantity=order.filledQuantity,
+        remaining_quantity=order.remainingQuantity,
+        status=order.status,
+        entered_time=datetime.datetime.strptime(order.enteredTime, "%Y-%m-%dT%H:%M:%S%z"),
+        cancel_time=datetime.datetime.strptime(order.cancelTime, "%Y-%m-%dT%H:%M:%S%z"),
+        session=order.session,
+        cancelable=order.cancelable
+    )

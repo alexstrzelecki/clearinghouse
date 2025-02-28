@@ -173,3 +173,34 @@ class Asset(msgspec.Struct):
     regular: Optional[Regular] = None
     ssid: Optional[int] = None
     symbol: Optional[str] = None
+
+
+class OrderLeg(msgspec.Struct):
+    orderLegType: str
+    legId: int
+    instrument: Instrument
+    instruction: str
+    positionEffect: str
+    quantity: float
+
+
+class Order(msgspec.Struct):
+    session: str
+    duration: str
+    orderType: str
+    cancelTime: str
+    complexOrderStrategyType: str
+    quantity: float
+    filledQuantity: float
+    remainingQuantity: float
+    requestedDestination: str
+    destinationLinkName: str
+    price: float
+    orderLegCollection: List[OrderLeg]
+    orderStrategyType: str
+    orderId: int
+    cancelable: bool
+    editable: bool
+    status: str
+    enteredTime: str
+    accountNumber: int
