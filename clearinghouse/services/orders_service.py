@@ -3,7 +3,7 @@ import datetime
 
 import msgspec
 
-from clearinghouse.main import get_global_schwab_service
+from clearinghouse.dependencies import SchwabService
 # import clearinghouse.models.schwab_request
 import clearinghouse.models.schwab_response as schwab_response
 from clearinghouse.models.request import (
@@ -18,10 +18,9 @@ from clearinghouse.models.response import (
 # from clearinghouse.models.request import
 
 
-schwab_service = get_global_schwab_service()
+# TODO: enforce ticker format - uppercase
 
-
-def fetch_orders(**kwargs) -> List[SubmittedOrder]:
+def fetch_orders(schwab_service: SchwabService, **kwargs) -> List[SubmittedOrder]:
     # add filter flags
     now = datetime.datetime.now()
     resp = schwab_service.client.account_orders(
@@ -37,7 +36,7 @@ def fetch_orders(**kwargs) -> List[SubmittedOrder]:
     return []
 
 
-def fetch_positions(**kwargs) -> List[Position]:
+def fetch_positions(schwab_service: SchwabService, **kwargs) -> List[Position]:
     # 'positions' fields returns a flat list of positions.
     resp = schwab_service.client.account_details(accountHash=schwab_service.account_hash, fields='positions')
     decoded_resp: List[schwab_response.SchwabPosition] = (
@@ -46,26 +45,27 @@ def fetch_positions(**kwargs) -> List[Position]:
     return [schwab_to_ch_position(p) for p in decoded_resp]
 
 
-def place_order(order: Order) -> SubmittedOrder:
+def place_order(schwab_service: SchwabService, order: Order) -> SubmittedOrder:
     pass
 
 
-def place_orders(orders: List[Order]) -> List[SubmittedOrder]:
+def place_orders(schwab_service: SchwabService, orders: List[Order]) -> List[SubmittedOrder]:
     pass
 
 
-def place_bulk_orders(orders: List[Order]) -> List[SubmittedOrder]:
+def place_bulk_orders(schwab_service: SchwabService, orders: List[Order]) -> List[SubmittedOrder]:
     pass
 
 
-def fetch_quote(ticker: str) -> List[Quote]:
+def fetch_quote(schwab_service: SchwabService, ticker: str) -> Quote:
+    # TODO: Add error handling
     resp = schwab_service.client.quote(ticker)
     decoded_resp = msgspec.json.decode(resp.text, type=Dict[str, schwab_response.Asset])
 
-    return [schwab_to_ch_quote(q) for q in decoded_resp.values()]
+    return schwab_to_ch_quote(decoded_resp.get(ticker))
 
 
-def fetch_quotes(tickers: List[str]) -> List[Quote]:
+def fetch_quotes(schwab_service: SchwabService, tickers: List[str]) -> List[Quote]:
     resp = schwab_service.client.quote(tickers)
     decoded_resp = msgspec.json.decode(resp.text, type=Dict[str, schwab_response.Asset])
 
@@ -100,9 +100,9 @@ def schwab_to_ch_quote(asset: schwab_response.Asset) -> Quote:
     return Quote(
         ticker=asset.symbol,
         price=asset.quote.openPrice,
-        quote_time=datetime.datetime.fromtimestamp(asset.quote.quoteTime),  # epoch time
+        quote_time=datetime.datetime.fromtimestamp(asset.quote.quoteTime / 1000),  # epoch time
         total_volume=asset.quote.totalVolume,
-        net_percentage_change=asset.quote.netPercentChange,
+        net_percentage_change=asset.quote.netPercentChange,  # TODO: confirm this in schwab docs
         bid_price=asset.quote.bidPrice,
         ask_price=asset.quote.askPrice,
     )

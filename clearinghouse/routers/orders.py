@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 
+from clearinghouse.dependencies import SchwabService
 from clearinghouse.models.request import Order as RequestOrder
 from clearinghouse.models.response import (
     SubmittedOrder,
@@ -14,9 +15,16 @@ from clearinghouse.models.response import (
     GenericCollectionResponse
 )
 from clearinghouse.services.response_generation import generate_generic_response
+from clearinghouse.services.orders_service import (
+    fetch_positions,
+    fetch_orders,
+    fetch_quote,
+    fetch_quotes,
+    fetch_transactions,
+)
 
 
-def create_order_endpoints():
+def create_order_endpoints(schwab_service: SchwabService):
     order_router = APIRouter(prefix="/v1", tags=["orders"])
 
     @order_router.get(
@@ -28,7 +36,7 @@ def create_order_endpoints():
         """
         TODO: add flags for order filtering / sorting
         """
-        data = []
+        data = fetch_orders(schwab_service)
         return generate_generic_response("OrdersList", data)
 
     @order_router.post(
@@ -73,9 +81,9 @@ def create_order_endpoints():
         status_code=status.HTTP_200_OK,
         response_model=GenericItemResponse[Quote],
     )
-    def get_quote(ticker: str) -> Dict[str, Any]:
+    def get_quote(ticker: str) -> GenericItemResponse[Quote]:
         # TODO: add parameter for equity vs option
-        data = None
+        data = fetch_quote(schwab_service, ticker)
         return generate_generic_response("Quote", data)
 
 

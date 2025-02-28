@@ -14,7 +14,7 @@ def get_global_schwab_service() -> SchwabService:
     return schwab_service
 
 app = FastAPI()
-app.include_router(orders.create_order_endpoints())
+app.include_router(orders.create_order_endpoints(get_global_schwab_service()))
 app.include_router(status.create_status_endpoints(get_global_schwab_service()))
 
 @app.get("/")
