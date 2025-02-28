@@ -57,7 +57,13 @@ class Transaction(BaseModel):
     Simplified transaction model for the original Schwab API return model.
     TODO: finish the attr collection for this
     """
+    id: str = Field(..., alias="id")
     orderId: str = Field(..., alias="order_id")
+    time: datetime.datetime = Field(..., alias="time")
+    type: str = Field(..., alias="type")
+    status: str = Field(..., alias="status")
+    netAmount: str = Field(..., alias="net_amount")
+    trade_date: datetime.datetime = Field(..., alias="trade_date")
 
 
 class Lot(BaseModel):
