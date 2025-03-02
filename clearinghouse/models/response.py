@@ -5,7 +5,6 @@ from pydantic import Field
 
 from typing import Generic, TypeVar
 from pydantic import BaseModel
-from pydantic.generics import GenericModel
 
 
 T = TypeVar("T", bound=BaseModel)
@@ -17,7 +16,7 @@ class Meta(BaseModel):
     # request_duration: Optional[datetime.timedelta]  # TODO: implement this via middleware
 
 
-class BaseResponse(GenericModel, Generic[T]):
+class BaseResponse(BaseModel, Generic[T]):
     meta: Meta
 
 
