@@ -22,6 +22,7 @@ from clearinghouse.services.orders_service import (
     fetch_quotes,
     fetch_transactions,
 )
+from clearinghouse.exceptions import ForbiddenException
 
 
 def create_order_endpoints(schwab_service: SchwabService):

@@ -4,7 +4,6 @@ import datetime
 import msgspec
 
 from clearinghouse.dependencies import SchwabService
-# import clearinghouse.models.schwab_request
 import clearinghouse.models.schwab_response as schwab_response
 from clearinghouse.models.request import (
     Order,
@@ -17,7 +16,7 @@ from clearinghouse.models.response import (
     SubmittedOrder,
     Position
 )
-# from clearinghouse.models.request import
+from clearinghouse.exceptions import ForbiddenException
 
 
 # TODO: enforce ticker format - uppercase
@@ -68,15 +67,23 @@ def fetch_positions(schwab_service: SchwabService, **kwargs) -> List[Position]:
 
 
 def place_order(schwab_service: SchwabService, order: Order) -> SubmittedOrder:
-    pass
+    if schwab_service.read_only_mode:
+        raise ForbiddenException()
 
+    return None
 
 def place_orders(schwab_service: SchwabService, orders: List[Order]) -> List[SubmittedOrder]:
-    pass
+    if schwab_service.read_only_mode:
+        raise ForbiddenException()
+
+    return None
 
 
 def place_bulk_orders(schwab_service: SchwabService, orders: List[Order]) -> List[SubmittedOrder]:
-    pass
+    if schwab_service.read_only_mode:
+        raise ForbiddenException()
+
+    return None
 
 
 def fetch_quote(schwab_service: SchwabService, ticker: str) -> Quote:

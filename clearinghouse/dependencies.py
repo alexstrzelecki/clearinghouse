@@ -19,6 +19,7 @@ class EnvSettings(BaseSettings):
     schwab_app_secret: str = ""
     schwab_use_default_trading_account: Optional[bool] = True
     schwab_trading_account_number: Optional[str] = None
+    schwab_read_only_mode: Optional[bool] = False
 
     model_config = SettingsConfigDict(env_file=".env")
 
@@ -50,6 +51,8 @@ class SchwabService:
                                             os.environ.get("SCHWAB_USE_DEFAULT_TRADING_ACCOUNT"))
         self.account_number = (env_settings.schwab_trading_account_number or
                                    os.environ.get("SCHWAB_TRADING_ACCOUNT_NUMBER"))
+        self.read_only_mode = env_settings.schwab_read_only_mode or os.environ.get("SCHWAB_READ_ONLY_MODE")
+        self.account_hash: str = ""
         self.account_hash: str = ""
 
         self._cache = {}
