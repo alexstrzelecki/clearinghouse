@@ -33,7 +33,7 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[SubmittedOrder]
     )
-    def get_orders() -> Dict[str, Any]:
+    def get_orders() -> Any:
         """
         TODO: add flags for order filtering / sorting
         """
@@ -45,7 +45,7 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_201_CREATED,
         response_model=GenericItemResponse[SubmittedOrder]
     )
-    def place_order(order: RequestOrder) -> Dict[str, Any]:
+    def place_order(order: RequestOrder) -> Any:
         # TODO: add payload verification
         data = None
         return generate_generic_response("SubmittedOrder", data)
@@ -55,7 +55,7 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_200_OK,
         response_model=GenericItemResponse[SubmittedOrder]
     )
-    def order_details(order_id: str) -> Dict[str, Any]:
+    def order_details(order_id: str) -> Any:
         data = None
         return generate_generic_response("OrderDetails", data)
 
@@ -72,7 +72,7 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[Transaction],
     )
-    def get_transactions() -> Dict[str, Any]:
+    def get_transactions() -> Any:
         # TODO: add filtering parameters
         data = []
         return generate_generic_response("TransactionsList", data)
@@ -93,7 +93,7 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[Quote],
     )
-    def get_bulk_quotes(tickers: List[str]) -> Dict[str, Any]:
+    def get_bulk_quotes(tickers: List[str]) -> Any:
         data = []
         return generate_generic_response("QuotesList", data)
 
@@ -102,7 +102,7 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_201_CREATED,
         response_model=GenericCollectionResponse[SubmittedOrder]
     )
-    def place_batch_order(orders: List[RequestOrder]) -> Dict[str, Any]:
+    def place_batch_order(orders: List[RequestOrder]) -> Any:
         """
         Can be used to % change a list of positions.
         """

@@ -1,7 +1,7 @@
 import os
 import pytest
 from unittest.mock import patch, MagicMock
-from clearinghouse.dependencies import SchwabService, EnvSettings, LocalSchwabService
+from clearinghouse.dependencies import SchwabService, EnvSettings
 
 
 @pytest.fixture
