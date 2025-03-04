@@ -13,15 +13,18 @@ import clearinghouse.data.sample_data as sample_data
 
 class EnvSettings(BaseSettings):
     """
-    Boilerplate settings file to get secrets from a dotenv
+    Boilerplate settings file to get secrets from environmental variables or a dotenv file.
+    Pydantic settings will ALWAYS use envvar values over values in the dotenv unless
+    the envvar value is empty.
     """
     schwab_app_key: str = ""
     schwab_app_secret: str = ""
     schwab_use_default_trading_account: Optional[bool] = True
-    schwab_trading_account_number: Optional[str] = None
+    schwab_account_number: Optional[str] = None
     schwab_read_only_mode: Optional[bool] = False
+    schwab_local_mode: Optional[bool] = False
 
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)
 
 
 class SchwabService:
@@ -45,14 +48,11 @@ class SchwabService:
     """
 
     def __init__(self, env_settings: EnvSettings):
-        self.app_key = env_settings.schwab_app_key or os.environ.get("SCHWAB_APP_KEY")
-        self.app_secret = env_settings.schwab_app_secret or os.environ.get("SCHWAB_APP_SECRET")
-        self.use_default_trading_account = (env_settings.schwab_use_default_trading_account or
-                                            os.environ.get("SCHWAB_USE_DEFAULT_TRADING_ACCOUNT"))
-        self.account_number = (env_settings.schwab_trading_account_number or
-                                   os.environ.get("SCHWAB_TRADING_ACCOUNT_NUMBER"))
-        self.read_only_mode = env_settings.schwab_read_only_mode or os.environ.get("SCHWAB_READ_ONLY_MODE")
-        self.account_hash: str = ""
+        self.app_key = env_settings.schwab_app_key
+        self.app_secret = env_settings.schwab_app_secret
+        self.use_default_trading_account = env_settings.schwab_use_default_trading_account
+        self.account_number = env_settings.schwab_account_number
+        self.read_only_mode = env_settings.schwab_read_only_mode
         self.account_hash: str = ""
 
         self._cache = {}
@@ -76,7 +76,6 @@ class SchwabService:
         If no account ID provided, use the first that is returned from the Schwab API
         """
         account_info: List[Dict[str, str]] = self.client.account_linked().json()
-
         if self.use_default_trading_account:
             if not account_info:
                 raise ValueError("No accounts linked. Check Schwab developer portal.")
