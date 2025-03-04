@@ -1,5 +1,4 @@
 import datetime
-import os
 from typing import Optional, List, Dict, Any
 import json
 
@@ -9,6 +8,44 @@ import schedule
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 import clearinghouse.data.sample_data as sample_data
+
+
+class SafetySettings(BaseSettings):
+    """
+    Settings module that governs safety limits for an account and is user configurable.
+    These ensure that trades do not go over exposure limits, account size, max trade size, etc.
+
+    TODO: add settings around restricted tickers, exchanges, and currencies
+
+    Attributes:
+        max_dollar_trade_size (float): The maximum dollar amount allowed for a single trade.
+        max_dollar_sell_size (float): The maximum dollar amount allowed for a single sell order.
+            Will be ignored if greater than max_dollar_trade_size.
+        max_dollar_buy_size (float): The maximum dollar amount allowed for a single buy order.
+            Will be ignored if greater than max_dollar_trade_size.
+        allow_short_sales (bool): Flag to allow short sales to be submitted.
+        max_fee_per_trade (float): The maximum fee in dollars that can be charged for a single trade.
+            Most commonly used for ADRs avoidance.
+        minimum_trading_volume (int): The minimum average trading volume to allow a trade to proceed.
+        restrict_position_fraction (bool):
+            Flag indicating whether to restrict the fraction of the portfolio that any single position can represent.
+        max_position_fraction (float):
+            The maximum fraction of the portfolio that any single position can represent if restrictions are enabled.
+        allowed_currencies (List[str]): Currencies that allowed to be used.
+        restricted_securities (List[str]): Securities to be blocked from tradin
+    """
+    max_dollar_trade_size: float = None
+    max_dollar_sell_size: float = None
+    max_dollar_buy_size: float = None
+    allow_short_sales: bool = True
+    max_fee_per_trade: float = 1
+    minimum_trading_volume: int = 0
+    restrict_position_fraction: bool = False
+    max_position_fraction: float = 1
+    allowed_currencies: List[str] = ["USD"]  # TODO: use with enum
+    restricted_securities: List[str] = []
+
+    model_config = SettingsConfigDict(env_file="safety_settings.env")
 
 
 class EnvSettings(BaseSettings):

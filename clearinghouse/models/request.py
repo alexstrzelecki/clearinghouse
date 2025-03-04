@@ -80,6 +80,7 @@ class OrderDuration(str, Enum):
 
 
 class Order(BaseModel):
+    # TODO: add docstring explaining opaque attr
     ticker: str = Field(..., alias="ticker")
     price: float = Field(..., alias="price")
     operation: OrderOperation = Field(..., alias="operation")

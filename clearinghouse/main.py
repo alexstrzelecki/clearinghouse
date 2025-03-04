@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 
-from .dependencies import SchwabService, LocalSchwabService, EnvSettings
+from .dependencies import SchwabService, LocalSchwabService, EnvSettings, SafetySettings
 from .routers import orders, status
 
 # Global instance to be shared across all routers
 env_settings = EnvSettings()
+safety_settings = SafetySettings()
 schwab_service = SchwabService(env_settings) if not env_settings.schwab_local_mode else LocalSchwabService()
 
 def get_global_schwab_service() -> SchwabService:
