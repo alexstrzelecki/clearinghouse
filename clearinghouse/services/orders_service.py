@@ -141,6 +141,27 @@ def fetch_transaction_details(schwab_service: SchwabService, transaction_id: str
     raise NotImplementedError("Util function not implemented.")
 
 
+def adjust_position_fraction(schwab_service: SchwabService, ticker: str, fraction: float, open_new: bool = False, round_down: bool = False) -> SubmittedOrder:
+    """
+    Adjust the current holding of a security by a fraction / percentage. It will round down to the closest quantity to
+    minimize buying and selling and will not open new positions by default. Use negatives for position reductions.
+    TODO: should this accept a position or a ticket?
+    TODO: address percentage reduction by lot / strategy - e.g. FIFO
+    """
+    ...
+
+
+def adjust_bulk_positions_fractions(schwab_service: SchwabService, ticker_to_fraction: Dict[str, float], open_new: bool = False, round_down:bool = False) -> List[SubmittedOrder]:
+    """
+    Adjust the current holding of many securities by the fractions specified. It will round down to the closest quantity
+    to minimize buying and selling and will not open new positions by default. Use negatives for position reductions.
+    """
+    ...
+
+"""
+Mapping functions
+"""
+
 def schwab_to_ch_position(position: schwab_response.SchwabPosition) -> Position:
     # todo: helper for settling short or long position
     quantity = position.longQuantity or position.shortQuantity
