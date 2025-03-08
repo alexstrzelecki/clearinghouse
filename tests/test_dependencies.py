@@ -1,7 +1,7 @@
 import os
 import pytest
 from unittest.mock import patch, MagicMock
-from clearinghouse.dependencies import SchwabService, EnvSettings
+from clearinghouse.dependencies import SchwabService, EnvSettings, SafetySettings
 
 
 @pytest.fixture
@@ -10,6 +10,7 @@ def mock_schwab_client():
         mock_client = MagicMock()
         MockClient.return_value = mock_client
         yield mock_client
+
 
 @patch.dict(os.environ, {
     "SCHWAB_APP_KEY": "test_key",
@@ -79,3 +80,43 @@ def test_renew_refresh_token(mock_schwab_client):
     service = SchwabService(env_settings)
     assert service._renew_refresh_token() == "new_access_token"
     mock_schwab_client.tokens.update_tokens.assert_called_once_with(force_refresh_token=True)
+
+
+def test_default_values():
+    # this test will use values from safety_settings.env
+    settings = SafetySettings()
+    assert settings.max_dollar_trade_size == 10000.00
+    assert settings.max_dollar_sell_size == 5000.00
+    assert settings.max_dollar_buy_size == 5000.00
+    assert settings.allow_short_sales is True
+    assert settings.max_fee_per_trade == 5.00
+    assert settings.minimum_trading_volume == 1000
+    assert settings.restrict_position_fraction is True
+    assert settings.max_position_fraction == 0.10
+    assert settings.allowed_currencies == ["USD"]
+    assert settings.restricted_securities == []
+
+
+def test_custom_settings():
+    custom_settings = SafetySettings(
+        max_dollar_trade_size=10000,
+        max_dollar_sell_size=5000,
+        max_dollar_buy_size=5000,
+        allow_short_sales=False,
+        max_fee_per_trade=2,
+        minimum_trading_volume=100,
+        restrict_position_fraction=True,
+        max_position_fraction=0.5,
+        allowed_currencies=["USD", "EUR"],
+        restricted_securities=["XYZ", "ABC"]
+    )
+    assert custom_settings.max_dollar_trade_size == 10000
+    assert custom_settings.max_dollar_sell_size == 5000
+    assert custom_settings.max_dollar_buy_size == 5000
+    assert custom_settings.allow_short_sales is False
+    assert custom_settings.max_fee_per_trade == 2
+    assert custom_settings.minimum_trading_volume == 100
+    assert custom_settings.restrict_position_fraction is True
+    assert custom_settings.max_position_fraction == 0.5
+    assert custom_settings.allowed_currencies == ["USD", "EUR"]
+    assert custom_settings.restricted_securities == ["XYZ", "ABC"]
