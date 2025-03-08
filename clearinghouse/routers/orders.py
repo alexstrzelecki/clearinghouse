@@ -4,7 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 
 from clearinghouse.dependencies import SchwabService
-from clearinghouse.models.request import Order as RequestOrder
+from clearinghouse.models.request import (
+    Order as RequestOrder,
+    AdjustmentOrder,
+)
 from clearinghouse.models.response import (
     SubmittedOrder,
     Quote,
@@ -110,4 +113,19 @@ def create_order_endpoints(schwab_service: SchwabService):
         data = []
         return generate_generic_response("SubmittedOrdersList", data)
 
-    return order_router
+    @order_router.post(
+        "/adjust",
+        status_code=status.HTTP_201_CREATED,
+        response_model=GenericItemResponse[SubmittedOrder],
+    )
+    def adjust_position(
+        orders: List[AdjustmentOrder]
+    ) -> GenericCollectionResponse[SubmittedOrder]:
+        """
+        Adjusts the amount, by percentage, of current holdings.
+        Payload requests that include an un-held security will be ignored.
+        Can be used to sell existing securities (e.g. -1).
+        """
+        data = []
+        return generate_generic_response("SubmittedOrder", data)
+

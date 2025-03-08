@@ -1,6 +1,6 @@
-from typing import Union
+from typing_extensions import Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from enum import Enum
 
 
@@ -79,12 +79,34 @@ class OrderDuration(str, Enum):
     gtc = "gtc"
 
 
-class Order(BaseModel):
+class BaseOrder(BaseModel):
     # TODO: add docstring explaining opaque attr
     ticker: str = Field(..., alias="ticker")
     price: float = Field(..., alias="price")
-    operation: OrderOperation = Field(..., alias="operation")
     orderType: OrderType = Field(OrderType.market, alias="order_type")
-    amount: Union[int, float] = Field(..., alias="amount")
-    amountType: OrderAmountType = Field(OrderAmountType.shares, alias="amount_type")
     duration: OrderDuration = Field(OrderDuration.day, alias="duration")
+
+
+class Order(BaseOrder):
+    operation: OrderOperation = Field(..., alias="operation")
+    quantity: int = Field(..., alias="quantity")
+
+    @model_validator(mode="after")
+    def check_entries(self) -> Self:
+        if self.quantity < 0:
+            raise ValueError("Quantity cannot be negative.")
+
+
+class AdjustmentOrder(BaseOrder):
+    """
+    Model representing orders to adjust currently held securities.
+
+    adjustment: Fraction increase/decrease in a position
+        e.g. 0.5 for 50% increase.
+    """
+    adjustment: float = Field(..., alias="adjustment")
+
+    @model_validator(mode="after")
+    def check_entries(self) -> Self:
+        if self.adjustment < -1:
+            raise ValueError("Cannot sell more than entire position.")
