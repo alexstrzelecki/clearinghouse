@@ -59,7 +59,6 @@ class EnvSettings(BaseSettings):
     schwab_use_default_trading_account: Optional[bool] = True
     schwab_account_number: Optional[str] = None
     schwab_read_only_mode: Optional[bool] = False
-    schwab_local_mode: Optional[bool] = False
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)
 
