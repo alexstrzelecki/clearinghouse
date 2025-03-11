@@ -129,3 +129,4 @@ def create_order_endpoints(schwab_service: SchwabService):
         data = []
         return generate_generic_response("SubmittedOrder", data)
 
+    return order_router
