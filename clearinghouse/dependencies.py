@@ -58,6 +58,7 @@ class EnvSettings(BaseSettings):
     schwab_app_secret: str = ""
     schwab_use_default_trading_account: Optional[bool] = True
     schwab_account_number: Optional[str] = None
+    schwab_local_mode: Optional[bool] = False
     schwab_read_only_mode: Optional[bool] = False
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)
@@ -88,6 +89,7 @@ class SchwabService:
         self.app_secret = env_settings.schwab_app_secret
         self.use_default_trading_account = env_settings.schwab_use_default_trading_account
         self.account_number = env_settings.schwab_account_number
+        self.local_mode = env_settings.schwab_local_mode
         self.read_only_mode = env_settings.schwab_read_only_mode
         self.account_hash: str = ""
 
