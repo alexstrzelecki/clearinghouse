@@ -21,9 +21,18 @@ pre-commit install
 
 Setup envvar for secrets or use a dotfile (`.env`) with the same variables.
 `.env` file will be used before envvar if both are present.
+
+Env variables:
 ```bash
 export SCHWAB_APP_KEY="<insert value here>"
 export SCHWAB_APP_SECRET="<insert value here>"
+```
+.env:
+```
+SCHWAB_READ_ONLY_MODE=true
+SCHWAB_LOCAL_MODE=true
+SCHWAB_APP_KEY=abcde1234
+SCHWAB_APP_SECRET=abcde1234
 ```
 
 ## Usage
