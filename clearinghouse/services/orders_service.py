@@ -96,14 +96,6 @@ def place_bulk_orders(schwab_service: SchwabService, orders: List[Order]) -> Lis
     return None
 
 
-def fetch_quote(schwab_service: SchwabService, ticker: str) -> Quote:
-    # TODO: Add error handling
-    resp = schwab_service.client.quote(ticker)
-    decoded_resp = msgspec.json.decode(resp.text, type=Dict[str, schwab_response.Asset])
-
-    return schwab_to_ch_quote(decoded_resp.get(ticker))
-
-
 def fetch_quotes(schwab_service: SchwabService, tickers: List[str]) -> List[Quote]:
     resp = schwab_service.client.quote(tickers)
     decoded_resp = msgspec.json.decode(resp.text, type=Dict[str, schwab_response.Asset])

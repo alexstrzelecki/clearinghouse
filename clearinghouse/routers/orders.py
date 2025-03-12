@@ -22,7 +22,6 @@ from clearinghouse.services.orders_service import (
     fetch_positions,
     fetch_orders,
     fetch_order_details,
-    fetch_quote,
     fetch_quotes,
     fetch_transactions,
     adjust_bulk_positions_fractions,
@@ -65,13 +64,26 @@ def create_order_endpoints(schwab_service: SchwabService):
         data = None
         return generate_generic_response("SubmittedOrder", data)
 
+    @order_router.post(
+        "/orders/batch",
+        status_code=status.HTTP_201_CREATED,
+        response_model=GenericCollectionResponse[SubmittedOrder]
+    )
+    def place_batch_order(orders: List[RequestOrder]) -> Any:
+        """
+        Can be used to % change a list of positions.
+        """
+        # TODO: query parameter for percentage vs. absolute.
+        data = []
+        return generate_generic_response("SubmittedOrdersList", data)
+
     @order_router.delete(
-        "/orders/{orderId}",
+        "/orders/{orderID}",  # Ensure the path parameter matches the function argument
         status_code=status.HTTP_204_NO_CONTENT,
     )
     def delete_order(orderID: str) -> None:
         # TODO: return the object being deleted? Check schwab api docs
-        pass
+        ...
 
     @order_router.get(
         "/transactions",
@@ -90,7 +102,7 @@ def create_order_endpoints(schwab_service: SchwabService):
     )
     def get_quote(ticker: str) -> GenericItemResponse[Quote]:
         # TODO: add parameter for equity vs option
-        data = fetch_quote(schwab_service, ticker)
+        data = fetch_quotes(schwab_service, [ticker])[0]
         return generate_generic_response("Quote", data)
 
 
@@ -100,24 +112,12 @@ def create_order_endpoints(schwab_service: SchwabService):
         response_model=GenericCollectionResponse[Quote],
     )
     def get_bulk_quotes(tickers: List[str]) -> Any:
-        data = []
+        data = fetch_quotes(schwab_service, tickers)
         return generate_generic_response("QuotesList", data)
 
-    @order_router.post(
-        "/orders/batch",
-        status_code=status.HTTP_201_CREATED,
-        response_model=GenericCollectionResponse[SubmittedOrder]
-    )
-    def place_batch_order(orders: List[RequestOrder]) -> Any:
-        """
-        Can be used to % change a list of positions.
-        """
-        # TODO: query parameter for percentage vs. absolute.
-        data = []
-        return generate_generic_response("SubmittedOrdersList", data)
 
     @order_router.post(
-        "/adjust",
+        "/adjustments",
         status_code=status.HTTP_201_CREATED,
         response_model=GenericCollectionResponse[SubmittedOrder],
     )
