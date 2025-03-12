@@ -95,6 +95,7 @@ class Order(BaseOrder):
     def check_entries(self) -> Self:
         if self.quantity < 0:
             raise ValueError("Quantity cannot be negative.")
+        return self
 
 
 class AdjustmentOrder(BaseOrder):
@@ -110,3 +111,4 @@ class AdjustmentOrder(BaseOrder):
     def check_entries(self) -> Self:
         if self.adjustment < -1:
             raise ValueError("Cannot sell more than entire position.")
+        return self

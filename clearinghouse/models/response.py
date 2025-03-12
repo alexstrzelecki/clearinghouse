@@ -3,7 +3,7 @@ import datetime
 
 from pydantic import Field
 
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Optional
 from pydantic import BaseModel
 
 
@@ -21,7 +21,10 @@ class BaseResponse(BaseModel, Generic[T]):
 
 
 class GenericItemResponse(BaseResponse[T]):
-    data: T
+    """
+    Allow data to be a dict in case of empty data to prevent returning null
+    """
+    data: T | dict
 
 
 class GenericCollectionResponse(BaseResponse[T]):

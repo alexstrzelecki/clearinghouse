@@ -20,10 +20,10 @@ def generate_generic_response(response_type: str, data: Any | List[Any]) -> Gene
     if isinstance(data, list):
         return GenericCollectionResponse(
             meta=meta,
-            data=data,
+            data=data or [],
         )
     else:
         return GenericItemResponse(
             meta=meta,
-            data=data,
+            data=data or {},
         )
