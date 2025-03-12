@@ -1,4 +1,6 @@
+from fastapi import HTTPException
 
-class ForbiddenException(Exception):
+class ForbiddenException(HTTPException):
     """Raised when accessing a write endpoint in read-only mode"""
-    pass
+    def __init__(self):
+        super().__init__(status_code=403, detail="Clearinghouse is in read-only mode.")
