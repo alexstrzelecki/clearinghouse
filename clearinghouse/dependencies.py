@@ -177,6 +177,9 @@ class LocalSchwabClient(schwabdev.Client):
     def account_orders(self, accountHash: str, fromEnteredTime: datetime.datetime | str, toEnteredTime: datetime.datetime | str, maxResults: int = None, status: str = None) -> requests.Response:
         return self._generate_response(sample_data.ACCOUNT_ORDERS_ALL)
 
+    def order_details(self, accountHash: str, orderId: int | str) -> requests.Response:
+        return self._generate_response(sample_data.ACCOUNT_ORDERS_ALL[0])
+
     def order_place(self, accountHash: str, order: dict) -> requests.Response:
         # TODO: confirm what is returned
         return self._generate_response({}, status_code=201)

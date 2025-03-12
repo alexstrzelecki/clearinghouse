@@ -21,9 +21,11 @@ from clearinghouse.services.response_generation import generate_generic_response
 from clearinghouse.services.orders_service import (
     fetch_positions,
     fetch_orders,
+    fetch_order_details,
     fetch_quote,
     fetch_quotes,
     fetch_transactions,
+    adjust_bulk_positions_fractions,
 )
 from clearinghouse.exceptions import ForbiddenException
 
@@ -43,6 +45,16 @@ def create_order_endpoints(schwab_service: SchwabService):
         data = fetch_orders(schwab_service)
         return generate_generic_response("OrdersList", data)
 
+    @order_router.get(
+        "/orders/{orderID}",
+        status_code=status.HTTP_200_OK,
+        response_model=GenericItemResponse[SubmittedOrder]
+    )
+    def order_details(orderID: str) -> Any:
+        data = fetch_order_details(schwab_service, order_id=orderID)
+
+        return generate_generic_response("OrderDetails", data)
+
     @order_router.post(
         "/orders",
         status_code=status.HTTP_201_CREATED,
@@ -53,20 +65,11 @@ def create_order_endpoints(schwab_service: SchwabService):
         data = None
         return generate_generic_response("SubmittedOrder", data)
 
-    @order_router.get(
-        "/orders/{orderId}",
-        status_code=status.HTTP_200_OK,
-        response_model=GenericItemResponse[SubmittedOrder]
-    )
-    def order_details(order_id: str) -> Any:
-        data = None
-        return generate_generic_response("OrderDetails", data)
-
     @order_router.delete(
         "/orders/{orderId}",
         status_code=status.HTTP_204_NO_CONTENT,
     )
-    def delete_order(order_id: str) -> None:
+    def delete_order(orderID: str) -> None:
         # TODO: return the object being deleted? Check schwab api docs
         pass
 
@@ -91,8 +94,8 @@ def create_order_endpoints(schwab_service: SchwabService):
         return generate_generic_response("Quote", data)
 
 
-    @order_router.post(
-        "/quotes/{ticker}",
+    @order_router.put(
+        "/quotes",
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[Quote],
     )
@@ -116,17 +119,17 @@ def create_order_endpoints(schwab_service: SchwabService):
     @order_router.post(
         "/adjust",
         status_code=status.HTTP_201_CREATED,
-        response_model=GenericItemResponse[SubmittedOrder],
+        response_model=GenericCollectionResponse[SubmittedOrder],
     )
     def adjust_position(
-        orders: List[AdjustmentOrder]
+        ticker_to_fraction: List[AdjustmentOrder]
     ) -> GenericCollectionResponse[SubmittedOrder]:
         """
         Adjusts the amount, by percentage, of current holdings.
         Payload requests that include an un-held security will be ignored.
         Can be used to sell existing securities (e.g. -1).
         """
-        data = []
+        data = adjust_bulk_positions_fractions(schwab_service, ticker_to_fraction)
         return generate_generic_response("SubmittedOrder", data)
 
     return order_router

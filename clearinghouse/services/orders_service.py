@@ -8,7 +8,7 @@ import clearinghouse.models.schwab_response as schwab_response
 from clearinghouse.models.request import (
     Order,
     TransactionType,
-    OrderStatus,
+    OrderStatus, AdjustmentOrder,
 )
 from clearinghouse.models.response import (
     Quote,
@@ -55,6 +55,16 @@ def fetch_orders(
     decoded_resp = msgspec.json.decode(resp.content, type=List[schwab_response.Order])
 
     return [schwab_to_ch_order(k) for k in decoded_resp]
+
+
+def fetch_order_details(schwab_service: SchwabService, order_id: str) -> SubmittedOrder:
+    resp = schwab_service.client.order_details(
+        accountHash=schwab_service.account_hash,
+        orderId=order_id,
+    )
+    decoded_resp = msgspec.json.decode(resp.content, type=schwab_response.Order)
+
+    return schwab_to_ch_order(decoded_resp)
 
 
 def fetch_positions(schwab_service: SchwabService, **kwargs) -> List[Position]:
@@ -152,15 +162,14 @@ def adjust_position_fraction(schwab_service: SchwabService, ticker: str, fractio
     ...
 
 
-def adjust_bulk_positions_fractions(schwab_service: SchwabService, ticker_to_fraction: Dict[str, float],
+def adjust_bulk_positions_fractions(schwab_service: SchwabService, orders: List[AdjustmentOrder],
                                     open_new: bool = False, round_down:bool = False) -> List[SubmittedOrder]:
     """
     Adjust the current holding of many securities by the fractions specified. It will round down to the closest quantity
     to minimize buying and selling and will not open new positions by default. Use negatives for position reductions.
 
     """
-    for item in ticker_to_fraction:
-        pass
+    return []
 
 
 
