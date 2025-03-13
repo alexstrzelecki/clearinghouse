@@ -26,7 +26,7 @@ from clearinghouse.services.orders_service import (
     cancel_order_request,
     fetch_quotes,
     fetch_transactions,
-    adjust_bulk_positions_fractions,
+    adjust_bulk_positions_fractions, fetch_transaction_details,
 )
 from clearinghouse.exceptions import ForbiddenException
 
@@ -57,12 +57,12 @@ def create_order_endpoints(schwab_service: SchwabService):
         return generate_generic_response("OrdersList", data)
 
     @order_router.get(
-        "/orders/{orderID}",
+        "/orders/{orderId}",
         status_code=status.HTTP_200_OK,
         response_model=GenericItemResponse[SubmittedOrder]
     )
-    def order_details(orderID: str) -> Any:
-        data = fetch_order_details(schwab_service, order_id=orderID)
+    def order_details(orderId: str) -> Any:
+        data = fetch_order_details(schwab_service, order_id=orderId)
 
         return generate_generic_response("OrderDetails", data)
 
@@ -97,15 +97,15 @@ def create_order_endpoints(schwab_service: SchwabService):
         return generate_generic_response("SubmittedOrdersList", successful)
 
     @order_router.delete(
-        "/orders/{orderID}",  # Ensure the path parameter matches the function argument
+        "/orders/{orderId}",  # Ensure the path parameter matches the function argument
         status_code=status.HTTP_204_NO_CONTENT,
     )
-    def cancel_order(orderID: str) -> None:
-        status_code = cancel_order_request(schwab_service, orderID)
+    def cancel_order(orderId: str) -> None:
+        status_code = cancel_order_request(schwab_service, orderId)
         if status_code != 200:
             raise HTTPException(
                 status_code=status_code,
-                detail=f"Failed to cancel order {orderID}",
+                detail=f"Failed to cancel order {orderId}",
             )
 
     @order_router.get(
@@ -117,6 +117,16 @@ def create_order_endpoints(schwab_service: SchwabService):
         # TODO: add filtering parameters
         data = fetch_transactions(schwab_service)
         return generate_generic_response("TransactionsList", data)
+
+    @order_router.get(
+        "/transactions/{transactionId}",
+        status_code=status.HTTP_200_OK,
+        response_model=GenericItemResponse[Transaction],
+    )
+    def get_transactions_details(transactionId: str) -> Any:
+        # TODO: add filtering parameters
+        data = fetch_transaction_details(schwab_service, transactionId)
+        return generate_generic_response("Transaction", data)
 
 
     @order_router.get(

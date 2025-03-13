@@ -35,7 +35,7 @@ class SubmittedOrder(BaseModel):
     """
     Simplified transaction model for the original Schwab API return model.
     """
-    orderId: str = Field(..., alias="order_id")
+    orderId: int = Field(..., alias="order_id")
     isFilled: bool = Field(..., alias="is_filled")
     total: float = Field(..., alias="total")
     duration: str = Field(..., alias="duration")

@@ -321,7 +321,50 @@ QUOTES = {
 }
 
 
-TRANSACTION_DETAILS = {}
+TRANSACTION_DETAILS = [
+  {
+    "activityId": 0,
+    "time": "2025-03-13T06:08:07.638Z",
+    "user": {
+      "cdDomainId": "string",
+      "login": "string",
+      "type": "ADVISOR_USER",
+      "userId": 0,
+      "systemUserName": "string",
+      "firstName": "string",
+      "lastName": "string",
+      "brokerRepCode": "string"
+    },
+    "description": "string",
+    "accountNumber": "string",
+    "type": "TRADE",
+    "status": "VALID",
+    "subAccount": "CASH",
+    "tradeDate": "2025-03-13T06:08:07.638Z",
+    "settlementDate": "2025-03-13T06:08:07.638Z",
+    "positionId": 0,
+    "orderId": 0,
+    "netAmount": 0,
+    "activityType": "ACTIVITY_CORRECTION",
+    "transferItems": [
+      {
+        "instrument": {
+          "cusip": "string",
+          "symbol": "string",
+          "description": "string",
+          "instrumentId": 0,
+          "netChange": 0,
+          "type": "SWEEP_VEHICLE"
+        },
+        "amount": 0,
+        "cost": 0,
+        "price": 0,
+        "feeType": "COMMISSION",
+        "positionEffect": "OPENING"
+      }
+    ]
+  }
+]
 
 
 TRANSACTIONS = [{'activityId': 12341234,

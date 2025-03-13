@@ -160,7 +160,13 @@ def fetch_transactions(
 
 
 def fetch_transaction_details(schwab_service: SchwabService, transaction_id: str) -> Transaction:
-    raise NotImplementedError("Util function not implemented.")
+    resp = schwab_service.client.transaction_details(
+        accountHash=schwab_service.account_hash,
+        transactionId=transaction_id,
+    )
+    decoded_resp = msgspec.json.decode(resp.text, type=List[schwab_response.Transaction])
+
+    return [schwab_to_ch_transaction(t) for t in decoded_resp][0]
 
 
 def adjust_position_fraction(schwab_service: SchwabService, ticker: str, fraction: float,
@@ -232,7 +238,7 @@ def schwab_to_ch_quote(asset: schwab_response.Asset) -> Quote:
 
 def schwab_to_ch_order(order: schwab_response.Order) -> SubmittedOrder:
     return SubmittedOrder(
-        order_id=str(order.orderId),  # TODO: Confirm if str or int
+        order_id=order.orderId,
         is_filled=(order.filledQuantity == order.quantity),
         total=order.price * order.quantity,
         duration=order.duration,
