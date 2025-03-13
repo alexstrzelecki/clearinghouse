@@ -72,6 +72,7 @@ def fetch_order_details(schwab_service: SchwabService, order_id: str) -> Submitt
 def fetch_positions(schwab_service: SchwabService, **kwargs) -> List[Position]:
     # 'positions' fields returns a flat list of positions.
     resp = schwab_service.client.account_details(accountHash=schwab_service.account_hash, fields='positions')
+    print(resp.text)
     decoded_resp: List[schwab_response.SchwabPosition] = (
         msgspec.json.decode(resp.text, type=List[schwab_response.SchwabPosition]))
 
@@ -128,7 +129,7 @@ def fetch_transactions(
     start_date: Optional[datetime.datetime] = None,
     end_date: Optional[datetime.datetime] = None,
     types: Optional[List[TransactionType]] = None,
-    ticker: Optional[str] = None
+    # ticker: Optional[str] = None
 ) -> List[Transaction]:
     """
     Get a list of transactions for the given account using the parameters provided.
@@ -137,7 +138,6 @@ def fetch_transactions(
     :param start_date: Start date for filtering transactions
     :param end_date: End date for filtering transactions
     :param types: List of transaction types to filter by
-    :param ticker: Ticker symbol to filter transactions
     :return: List of transactions
     """
     now = datetime.datetime.now()
@@ -149,10 +149,10 @@ def fetch_transactions(
 
     resp = schwab_service.client.transactions(
         accountHash=schwab_service.account_hash,
-        fromEnteredTime=start_date,
-        toEnteredTime=end_date,
+        startDate=start_date,
+        endDate=end_date,
         types=type_strings,
-        ticker=ticker
+        # ticker=ticker
     )
     decoded_resp = msgspec.json.decode(resp.text, type=List[schwab_response.Transaction])
 
@@ -206,8 +206,10 @@ def schwab_to_ch_position(position: schwab_response.SchwabPosition) -> Position:
 
 
 def schwab_to_ch_transaction(transaction: schwab_response.Transaction) -> Transaction:
+    # TODO: confirm that these are valid
     return Transaction(
         id=transaction.activityId,
+        order_id=transaction.orderId,
         time=transaction.time,
         type=transaction.type,
         status=transaction.status,

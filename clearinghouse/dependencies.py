@@ -8,6 +8,7 @@ import schedule
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 import clearinghouse.data.sample_data as sample_data
+from clearinghouse.data.sample_data import ACCOUNT_DETAILS_ALL
 
 
 class SafetySettings(BaseSettings):
@@ -174,7 +175,8 @@ class LocalSchwabClient(schwabdev.Client):
         return self._generate_response(sample_data.ACCOUNT_DETAILS_ALL)
 
     def account_details(self, accountHash: str, fields: str = None) -> requests.Response:
-        return self._generate_response(sample_data.ACCOUNT_DETAILS)
+        data = sample_data.ACCOUNT_DETAILS_ALL["securitiesAccount"]["positions"] if fields == "positions" else sample_data.ACCOUNT_DETAILS_ALL
+        return self._generate_response(data)
 
     def account_orders(self, accountHash: str, fromEnteredTime: datetime.datetime | str, toEnteredTime: datetime.datetime | str, maxResults: int = None, status: str = None) -> requests.Response:
         return self._generate_response(sample_data.ACCOUNT_ORDERS_ALL)

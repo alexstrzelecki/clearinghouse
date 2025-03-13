@@ -34,6 +34,16 @@ from clearinghouse.exceptions import ForbiddenException
 def create_order_endpoints(schwab_service: SchwabService):
     order_router = APIRouter(prefix="/v1", tags=["orders"])
 
+    @order_router.put(
+        "/positions",
+        status_code=status.HTTP_200_OK,
+        response_model=GenericCollectionResponse[Position]
+    )
+    def get_positions() -> Any:
+        # TODO: add filtering / flags
+        data = fetch_positions(schwab_service)
+        return generate_generic_response("PositionsList", data)
+
     @order_router.get(
         "/orders",
         status_code=status.HTTP_200_OK,
@@ -105,8 +115,9 @@ def create_order_endpoints(schwab_service: SchwabService):
     )
     def get_transactions() -> Any:
         # TODO: add filtering parameters
-        data = []
+        data = fetch_transactions(schwab_service)
         return generate_generic_response("TransactionsList", data)
+
 
     @order_router.get(
         "/quotes/{ticker}",

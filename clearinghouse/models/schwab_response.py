@@ -29,7 +29,7 @@ class Transaction(msgspec.Struct, kw_only=True):
     subAccount: str
     tradeDate: datetime
     positionId: int
-    # orderId: int
+    orderId: int
     netAmount: float
     transferItems: List[InstrumentObj] | None = None
 
@@ -84,10 +84,12 @@ class SchwabPosition(msgspec.Struct, kw_only=True):
 
 
 class SchwabInstrument(msgspec.Struct, kw_only=True):
-    assetType: str
     cusip: str
-    netChange: float | None = None
     symbol: str
+    description: str
+    instrumentId: int
+    netChange: float | None = None
+    type: str
 
 
 """
@@ -203,4 +205,4 @@ class Order(msgspec.Struct):
     editable: bool
     status: str
     enteredTime: str
-    accountNumber: int
+    accountNumber: str
