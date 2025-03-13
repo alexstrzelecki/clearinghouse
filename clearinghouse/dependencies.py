@@ -184,7 +184,7 @@ class LocalSchwabClient(schwabdev.Client):
 
     def order_place(self, accountHash: str, order: dict) -> requests.Response:
         # TODO: confirm what is returned
-        return self._generate_response({}, status_code=201)
+        return self._generate_response(None, status_code=201)
 
     def order_cancel(self, accountHash: str, orderId: int | str) -> requests.Response:
         # TODO: confirm status code

@@ -25,6 +25,7 @@ from clearinghouse.services.orders_service import (
     fetch_quotes,
     fetch_transactions,
     adjust_bulk_positions_fractions,
+    place_orders,
 )
 from clearinghouse.exceptions import ForbiddenException
 
@@ -57,25 +58,32 @@ def create_order_endpoints(schwab_service: SchwabService):
     @order_router.post(
         "/orders",
         status_code=status.HTTP_201_CREATED,
-        response_model=GenericItemResponse[SubmittedOrder]
+        response_model=GenericItemResponse[RequestOrder]
     )
-    def place_order(order: RequestOrder) -> Any:
-        # TODO: add payload verification
-        data = None
-        return generate_generic_response("SubmittedOrder", data)
+    async def order_placement(order: RequestOrder) -> Any:
+        successful, failed = await place_orders(schwab_service, [order])
+
+        if any(failed):
+            # TODO: handle partial failures
+            pass
+
+        return generate_generic_response("SubmittedOrder", successful[0])
 
     @order_router.post(
         "/orders/batch",
         status_code=status.HTTP_201_CREATED,
-        response_model=GenericCollectionResponse[SubmittedOrder]
+        response_model=GenericCollectionResponse[RequestOrder]
     )
-    def place_batch_order(orders: List[RequestOrder]) -> Any:
+    async def order_placement_batch(orders: List[RequestOrder]) -> Any:
         """
-        Can be used to % change a list of positions.
         """
-        # TODO: query parameter for percentage vs. absolute.
-        data = []
-        return generate_generic_response("SubmittedOrdersList", data)
+        successful, failed = await place_orders(schwab_service, orders)
+
+        if any(failed):
+            # TODO: handle partial failures
+            pass
+
+        return generate_generic_response("SubmittedOrdersList", successful)
 
     @order_router.delete(
         "/orders/{orderID}",  # Ensure the path parameter matches the function argument

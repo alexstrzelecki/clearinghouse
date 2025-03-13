@@ -1,5 +1,7 @@
+from threading import active_count
 from typing import Dict, List, Optional
 import datetime
+from requests import Response
 
 import msgspec
 
@@ -76,24 +78,36 @@ def fetch_positions(schwab_service: SchwabService, **kwargs) -> List[Position]:
     return [schwab_to_ch_position(p) for p in decoded_resp]
 
 
-def place_order(schwab_service: SchwabService, order: Order) -> SubmittedOrder:
+async def _place_order(schwab_service: SchwabService, order: Dict) -> Response:
+    """
+    Schwab API returns status 201 and empty response body if successful.
+    """
+    return schwab_service.client.order_place(
+        accountHash=schwab_service.account_hash,
+        order=order,
+    )
+
+
+async def place_orders(schwab_service: SchwabService, orders: List[Order]) -> (List[SubmittedOrder], List[SubmittedOrder]):
     if schwab_service.read_only_mode:
         raise ForbiddenException()
 
-    return None
+    successful_orders, failed_orders = [], []
 
-def place_orders(schwab_service: SchwabService, orders: List[Order]) -> List[SubmittedOrder]:
+    for order in orders:
+        #TODO: Convert request into schwab_request
+        resp = await _place_order(schwab_service, order.model_dump())
+        if resp.status_code != 201:
+            failed_orders.append(order)
+        else:
+            successful_orders.append(order)
+
+    return successful_orders, failed_orders
+
+
+def delete_orders(schwab_service: SchwabService, order_id: str) -> bool:
     if schwab_service.read_only_mode:
         raise ForbiddenException()
-
-    return None
-
-
-def place_bulk_orders(schwab_service: SchwabService, orders: List[Order]) -> List[SubmittedOrder]:
-    if schwab_service.read_only_mode:
-        raise ForbiddenException()
-
-    return None
 
 
 def fetch_quotes(schwab_service: SchwabService, tickers: List[str]) -> List[Quote]:
