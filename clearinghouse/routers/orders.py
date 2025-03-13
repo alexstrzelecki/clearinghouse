@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
@@ -7,12 +7,14 @@ from clearinghouse.dependencies import SchwabService
 from clearinghouse.models.request import (
     Order as RequestOrder,
     AdjustmentOrder,
+    PositionsFilter,
+    OrdersFilter,
+    TransactionsFilter,
 )
 from clearinghouse.models.response import (
     SubmittedOrder,
     Quote,
     Transaction,
-    Lot,
     Position,
     GenericItemResponse,
     GenericCollectionResponse
@@ -34,13 +36,12 @@ from clearinghouse.exceptions import ForbiddenException
 def create_order_endpoints(schwab_service: SchwabService):
     order_router = APIRouter(prefix="/v1", tags=["orders"])
 
-    @order_router.put(
+    @order_router.get(
         "/positions",
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[Position]
     )
-    def get_positions() -> Any:
-        # TODO: add filtering / flags
+    def get_positions(position_filter: PositionsFilter = Depends()) -> Any:
         data = fetch_positions(schwab_service)
         return generate_generic_response("PositionsList", data)
 
@@ -49,7 +50,7 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[SubmittedOrder]
     )
-    def get_orders() -> Any:
+    def get_orders(orders_filter: OrdersFilter = Depends()) -> Any:
         """
         TODO: add flags for order filtering / sorting
         """
@@ -113,7 +114,7 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[Transaction],
     )
-    def get_transactions() -> Any:
+    def get_transactions(transaction_filter: TransactionsFilter = Depends()) -> Any:
         # TODO: add filtering parameters
         data = fetch_transactions(schwab_service)
         return generate_generic_response("TransactionsList", data)
@@ -130,23 +131,23 @@ def create_order_endpoints(schwab_service: SchwabService):
 
 
     @order_router.get(
-        "/quotes/{ticker}",
+        "/quotes/{symbol}",
         status_code=status.HTTP_200_OK,
         response_model=GenericItemResponse[Quote],
     )
-    def get_quote(ticker: str) -> GenericItemResponse[Quote]:
+    def get_quote(symbol: str) -> GenericItemResponse[Quote]:
         # TODO: add parameter for equity vs option
-        data = fetch_quotes(schwab_service, [ticker])[0]
+        data = fetch_quotes(schwab_service, [symbol])[0]
         return generate_generic_response("Quote", data)
 
 
-    @order_router.put(
+    @order_router.get(
         "/quotes",
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[Quote],
     )
-    def get_bulk_quotes(tickers: List[str]) -> Any:
-        data = fetch_quotes(schwab_service, tickers)
+    def get_bulk_quotes(symbols: List[str]) -> Any:
+        data = fetch_quotes(schwab_service, symbols)
         return generate_generic_response("QuotesList", data)
 
 
@@ -156,14 +157,14 @@ def create_order_endpoints(schwab_service: SchwabService):
         response_model=GenericCollectionResponse[SubmittedOrder],
     )
     def adjust_position(
-        ticker_to_fraction: List[AdjustmentOrder]
+        symbol_to_fraction: List[AdjustmentOrder]
     ) -> GenericCollectionResponse[SubmittedOrder]:
         """
         Adjusts the amount, by percentage, of current holdings.
         Payload requests that include an un-held security will be ignored.
         Can be used to sell existing securities (e.g. -1).
         """
-        data = adjust_bulk_positions_fractions(schwab_service, ticker_to_fraction)
+        data = adjust_bulk_positions_fractions(schwab_service, symbol_to_fraction)
         return generate_generic_response("SubmittedOrder", data)
 
     return order_router

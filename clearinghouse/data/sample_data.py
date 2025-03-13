@@ -175,7 +175,7 @@ ACCOUNT_ORDERS_ALL = [{'session': 'NORMAL',
   'editable': True,
   'status': 'PENDING_ACTIVATION',
   'enteredTime': '2023-04-05T00:00:00+0000',
-  'accountNumber': 141234712834},
+  'accountNumber': "141234712834"},
 ]
 
 QUOTES = {

@@ -12,7 +12,8 @@ Empirically derived data models from the Schwab API.
 
 @dataclass
 class EquityPosition:
-    ticker: str
+    # TODO: remove?
+    symbol: str
     quantity: int
     current_price: float
     cost_basis: float  # averaged over all lots, if applicable

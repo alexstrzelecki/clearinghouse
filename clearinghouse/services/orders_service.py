@@ -21,7 +21,7 @@ from clearinghouse.models.response import (
 from clearinghouse.exceptions import ForbiddenException
 
 
-# TODO: enforce ticker format - uppercase
+# TODO: enforce symbol format - uppercase
 
 def fetch_orders(
     schwab_service: SchwabService,
@@ -72,7 +72,6 @@ def fetch_order_details(schwab_service: SchwabService, order_id: str) -> Submitt
 def fetch_positions(schwab_service: SchwabService, **kwargs) -> List[Position]:
     # 'positions' fields returns a flat list of positions.
     resp = schwab_service.client.account_details(accountHash=schwab_service.account_hash, fields='positions')
-    print(resp.text)
     decoded_resp: List[schwab_response.SchwabPosition] = (
         msgspec.json.decode(resp.text, type=List[schwab_response.SchwabPosition]))
 
@@ -117,8 +116,8 @@ def cancel_order_request(schwab_service: SchwabService, order_id: str) -> int:
     return resp.status_code
 
 
-def fetch_quotes(schwab_service: SchwabService, tickers: List[str]) -> List[Quote]:
-    resp = schwab_service.client.quote(tickers)
+def fetch_quotes(schwab_service: SchwabService, symbols: List[str]) -> List[Quote]:
+    resp = schwab_service.client.quote(symbols)
     decoded_resp = msgspec.json.decode(resp.text, type=Dict[str, schwab_response.Asset])
 
     return [schwab_to_ch_quote(q) for q in decoded_resp.values()]
@@ -129,7 +128,7 @@ def fetch_transactions(
     start_date: Optional[datetime.datetime] = None,
     end_date: Optional[datetime.datetime] = None,
     types: Optional[List[TransactionType]] = None,
-    # ticker: Optional[str] = None
+    # symbols: Optional[str] = None
 ) -> List[Transaction]:
     """
     Get a list of transactions for the given account using the parameters provided.
@@ -152,7 +151,7 @@ def fetch_transactions(
         startDate=start_date,
         endDate=end_date,
         types=type_strings,
-        # ticker=ticker
+        # symbol=symbol
     )
     decoded_resp = msgspec.json.decode(resp.text, type=List[schwab_response.Transaction])
 
@@ -169,12 +168,12 @@ def fetch_transaction_details(schwab_service: SchwabService, transaction_id: str
     return [schwab_to_ch_transaction(t) for t in decoded_resp][0]
 
 
-def adjust_position_fraction(schwab_service: SchwabService, ticker: str, fraction: float,
+def adjust_position_fraction(schwab_service: SchwabService, symbol: str, fraction: float,
                              open_new: bool = False, round_down: bool = False) -> SubmittedOrder:
     """
     Adjust the current holding of a security by a fraction / percentage. It will round down to the closest quantity to
     minimize buying and selling and will not open new positions by default. Use negatives for position reductions.
-    TODO: should this accept a position or a ticker?
+    TODO: should this accept a position or a symbol?
     TODO: address percentage reduction by lot / strategy - e.g. FIFO
     """
     ...
@@ -201,7 +200,7 @@ def schwab_to_ch_position(position: schwab_response.SchwabPosition) -> Position:
     entry_value = position.averagePrice * quantity  # confirm this value
 
     return Position(
-        ticker=position.instrument.symbol,
+        symbol=position.instrument.symbol,
         quantity=quantity,  # TODO: confirm how this resp is structured. see docs
         lots=[],  # TODO: confirm how this is structured in response. see docs
         market_value=position.marketValue,
@@ -226,7 +225,7 @@ def schwab_to_ch_transaction(transaction: schwab_response.Transaction) -> Transa
 
 def schwab_to_ch_quote(asset: schwab_response.Asset) -> Quote:
     return Quote(
-        ticker=asset.symbol,
+        symbol=asset.symbol,
         price=asset.quote.openPrice,
         quote_time=datetime.datetime.fromtimestamp(asset.quote.quoteTime / 1000),  # epoch time
         total_volume=asset.quote.totalVolume,

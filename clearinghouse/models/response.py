@@ -56,7 +56,7 @@ class Quote(BaseModel):
     Current price model for equity/option.
     TODO: determine the extra attributes that may be needed.
     """
-    ticker: str
+    symbol: str
     price: float
     quoteTime: datetime.datetime = Field(..., alias="quote_time")
     totalVolume: int = Field(..., alias="total_volume")
@@ -86,7 +86,7 @@ class Lot(BaseModel):
 
 
 class Position(BaseModel):
-    ticker: str
+    symbol: str
     quantity: float
     lots: List[Lot]
     marketValue: float = Field(..., alias="market_value")

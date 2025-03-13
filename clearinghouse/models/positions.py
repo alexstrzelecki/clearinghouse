@@ -7,7 +7,7 @@ class Position(BaseModel):
     """
     Model for current account position of an equity / derivative
     """
-    ticker: str
+    symbol: str
     quantity: int  # TODO: no current use of fractional shares. Shorted shares will be negative
     current_price: float
     market_value: float

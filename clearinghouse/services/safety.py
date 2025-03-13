@@ -38,4 +38,4 @@ def is_currency_allowed(order: Order) -> bool:
 
 
 def is_security_restricted(order: Order) -> bool:
-    return order.ticker in safety_settings.restricted_securities
+    return order.symbol in safety_settings.restricted_securities
