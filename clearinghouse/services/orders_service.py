@@ -88,7 +88,7 @@ async def _place_order(schwab_service: SchwabService, order: Dict) -> Response:
     )
 
 
-async def place_orders(schwab_service: SchwabService, orders: List[Order]) -> (List[SubmittedOrder], List[SubmittedOrder]):
+async def place_orders(schwab_service: SchwabService, orders: List[Order]) -> (List[Order], List[Order]):
     if schwab_service.read_only_mode:
         raise ForbiddenException()
 
@@ -105,9 +105,15 @@ async def place_orders(schwab_service: SchwabService, orders: List[Order]) -> (L
     return successful_orders, failed_orders
 
 
-def delete_orders(schwab_service: SchwabService, order_id: str) -> bool:
+def cancel_order_request(schwab_service: SchwabService, order_id: str) -> int:
     if schwab_service.read_only_mode:
         raise ForbiddenException()
+
+    resp = schwab_service.client.order_cancel(
+        accountHash=schwab_service.account_hash,
+        orderId=order_id,
+    )
+    return resp.status_code
 
 
 def fetch_quotes(schwab_service: SchwabService, tickers: List[str]) -> List[Quote]:

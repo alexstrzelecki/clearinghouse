@@ -22,10 +22,11 @@ from clearinghouse.services.orders_service import (
     fetch_positions,
     fetch_orders,
     fetch_order_details,
+    place_orders,
+    cancel_order_request,
     fetch_quotes,
     fetch_transactions,
     adjust_bulk_positions_fractions,
-    place_orders,
 )
 from clearinghouse.exceptions import ForbiddenException
 
@@ -89,9 +90,13 @@ def create_order_endpoints(schwab_service: SchwabService):
         "/orders/{orderID}",  # Ensure the path parameter matches the function argument
         status_code=status.HTTP_204_NO_CONTENT,
     )
-    def delete_order(orderID: str) -> None:
-        # TODO: return the object being deleted? Check schwab api docs
-        ...
+    def cancel_order(orderID: str) -> None:
+        status_code = cancel_order_request(schwab_service, orderID)
+        if status_code != 200:
+            raise HTTPException(
+                status_code=status_code,
+                detail=f"Failed to cancel order {orderID}",
+            )
 
     @order_router.get(
         "/transactions",
