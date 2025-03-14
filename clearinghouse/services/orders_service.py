@@ -1,5 +1,5 @@
 from threading import active_count
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable
 import datetime
 from requests import Response
 
@@ -10,7 +10,11 @@ import clearinghouse.models.schwab_response as schwab_response
 from clearinghouse.models.request import (
     Order,
     TransactionType,
-    OrderStatus, AdjustmentOrder,
+    OrderStatus,
+    AdjustmentOrder,
+    PositionsFilter,
+    OrdersFilter,
+    TransactionsFilter,
 )
 from clearinghouse.models.response import (
     Quote,
@@ -189,6 +193,64 @@ def adjust_bulk_positions_fractions(schwab_service: SchwabService, orders: List[
     return []
 
 
+def filter_positions(data: List[Position], filter_request: PositionsFilter) -> List[Position]:
+    """
+    Filter positions by input parameters.
+    """
+    print(data)
+    filters = [
+        lambda p: p.assetType in filter_request.assetTypes if filter_request.assetTypes else True,
+        lambda p: p.quantity >= 0 if not filter_request.shorts else True,
+        lambda p: p.quantity <= 0 if not filter_request.longs else True,
+        lambda p: p.market_value >= filter_request.minPositionSize if filter_request.minPositionSize is not None else True,
+        lambda p: p.market_value <= filter_request.maxPositionSize if filter_request.maxPositionSize is not None else True,
+        lambda p: p.symbol in filter_request.symbols if filter_request.symbols else True,
+    ]
+
+    filtered_data = [
+        item for item in data
+        if all(f(item) for f in filters)
+    ]
+    print(filtered_data)
+
+    return filtered_data
+
+
+def filter_transactions(data: List[Transaction], filter_request: TransactionsFilter) -> List[Transaction]:
+    """
+    Filter transactions by input parameters. Parameters not included here are done natively by the Schwab client.
+    TODO: add symbol to transaction?
+    """
+    filters = [
+        lambda t: t.type in filter_request.types if filter_request.types else True,
+        # lambda t: t.symbol in filter_request.symbols if filter_request.symbols else True,
+        lambda t: t.time >= filter_request.startDate if filter_request.startDate else True,
+        lambda t: t.time <= filter_request.endDate if filter_request.endDate else True,
+    ]
+
+    filtered_data = [
+        item for item in data
+        if all(f(item) for f in filters)
+    ]
+
+    return filtered_data
+
+
+def filter_orders(data: List[Order], filter_request: OrdersFilter) -> List[Order]:
+    """
+    Filter orders by input parameters. Parameters not included here are done natively by the Schwab client.
+    """
+    filters = [
+        lambda o: o.symbol in filter_request.symbols if filter_request.symbols else True,
+    ]
+
+    filtered_data = [
+        item for item in data
+        if all(f(item) for f in filters)
+    ]
+
+    return filtered_data
+
 
 """
 Mapping functions
@@ -201,12 +263,13 @@ def schwab_to_ch_position(position: schwab_response.SchwabPosition) -> Position:
 
     return Position(
         symbol=position.instrument.symbol,
+        asset_type=position.instrument.type,
         quantity=quantity,  # TODO: confirm how this resp is structured. see docs
         lots=[],  # TODO: confirm how this is structured in response. see docs
         market_value=position.marketValue,
         entry_value=entry_value,
         net_change=position.instrument.netChange,
-        account_fraction=0,  # TODO: find if this is in the API response. Can see this in the UI as a calculated value.
+        account_fraction=0,  # TODO: Add this as a calculated value
     )
 
 
@@ -229,7 +292,7 @@ def schwab_to_ch_quote(asset: schwab_response.Asset) -> Quote:
         price=asset.quote.openPrice,
         quote_time=datetime.datetime.fromtimestamp(asset.quote.quoteTime / 1000),  # epoch time
         total_volume=asset.quote.totalVolume,
-        net_percentage_change=asset.quote.netPercentChange,  # TODO: confirm this in schwab docs
+        net_percentage_change=asset.quote.netPercentChange,
         bid_price=asset.quote.bidPrice,
         ask_price=asset.quote.askPrice,
     )

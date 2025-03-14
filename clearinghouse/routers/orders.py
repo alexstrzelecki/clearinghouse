@@ -1,6 +1,6 @@
-from typing import List, Any
+from typing import List, Any, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from starlette import status
 
 from clearinghouse.dependencies import SchwabService
@@ -28,7 +28,11 @@ from clearinghouse.services.orders_service import (
     cancel_order_request,
     fetch_quotes,
     fetch_transactions,
-    adjust_bulk_positions_fractions, fetch_transaction_details,
+    adjust_bulk_positions_fractions,
+    fetch_transaction_details,
+    filter_orders,
+    filter_positions,
+    filter_transactions,
 )
 from clearinghouse.exceptions import ForbiddenException
 
@@ -41,21 +45,27 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[Position]
     )
-    def get_positions(position_filter: PositionsFilter = Depends()) -> Any:
+    def get_positions(position_filter: Annotated[PositionsFilter, Query()]) -> Any:
+        # All current filtering is done by clearinghouse and not by the schwab client
         data = fetch_positions(schwab_service)
-        return generate_generic_response("PositionsList", data)
+        filtered_data = filter_positions(data, position_filter)
+
+        return generate_generic_response("PositionsList", filtered_data)
 
     @order_router.get(
         "/orders",
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[SubmittedOrder]
     )
-    def get_orders(orders_filter: OrdersFilter = Depends()) -> Any:
-        """
-        TODO: add flags for order filtering / sorting
-        """
-        data = fetch_orders(schwab_service)
-        return generate_generic_response("OrdersList", data)
+    def get_orders(orders_filter: Annotated[OrdersFilter, Query()]) -> Any:
+        # TODO: settle submittedorder vs order
+        data = fetch_orders(schwab_service,
+                            start_date=orders_filter.startDate,
+                            end_date=orders_filter.endDate,
+                            max_results=orders_filter.maxResults,
+                            status=orders_filter.status)
+        filtered_data = filter_orders(data, orders_filter)
+        return generate_generic_response("OrdersList", filtered_data)
 
     @order_router.get(
         "/orders/{orderId}",
@@ -114,10 +124,14 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[Transaction],
     )
-    def get_transactions(transaction_filter: TransactionsFilter = Depends()) -> Any:
-        # TODO: add filtering parameters
-        data = fetch_transactions(schwab_service)
-        return generate_generic_response("TransactionsList", data)
+    def get_transactions(transaction_filter: Annotated[TransactionsFilter, Query(...)]) -> Any:
+        data = fetch_transactions(schwab_service,
+                                  start_date=transaction_filter.startDate,
+                                  end_date=transaction_filter.endDate,
+                                  types=transaction_filter.types)
+
+        filtered_data = filter_transactions(data, transaction_filter)
+        return generate_generic_response("TransactionsList", filtered_data)
 
     @order_router.get(
         "/transactions/{transactionId}",
@@ -125,7 +139,6 @@ def create_order_endpoints(schwab_service: SchwabService):
         response_model=GenericItemResponse[Transaction],
     )
     def get_transactions_details(transactionId: str) -> Any:
-        # TODO: add filtering parameters
         data = fetch_transaction_details(schwab_service, transactionId)
         return generate_generic_response("Transaction", data)
 
@@ -137,11 +150,12 @@ def create_order_endpoints(schwab_service: SchwabService):
     )
     def get_quote(symbol: str) -> GenericItemResponse[Quote]:
         # TODO: add parameter for equity vs option
+        # TODO: consolidate quotes into query parameter
         data = fetch_quotes(schwab_service, [symbol])[0]
         return generate_generic_response("Quote", data)
 
 
-    @order_router.get(
+    @order_router.post(
         "/quotes",
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[Quote],

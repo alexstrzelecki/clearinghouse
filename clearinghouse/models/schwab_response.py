@@ -90,7 +90,7 @@ class SchwabInstrument(msgspec.Struct, kw_only=True):
     description: str
     instrumentId: int
     netChange: float | None = None
-    type: str
+    type: str  # TODO: determine the real response type - doc disagreement on assetType vs. type
 
 
 """

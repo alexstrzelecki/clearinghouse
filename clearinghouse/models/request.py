@@ -2,6 +2,7 @@ import datetime
 from typing_extensions import Self
 from typing import Optional, List
 
+from fastapi import Query
 from pydantic import BaseModel, Field, model_validator
 from enum import Enum
 
@@ -117,11 +118,26 @@ class AdjustmentOrder(BaseOrder):
 
 
 class PositionsFilter(BaseModel):
-    assetType: Optional[str]  = "" # TODO: make enum
+    assetTypes: Optional[List[str]] = None  # TODO: make enum
     shorts: Optional[bool] = True
     longs: Optional[bool] = True
     minPositionSize: Optional[float] = None
     maxPositionSize: Optional[float] = None
+    symbols: Optional[List[str]] = None
+
+    @model_validator(mode='before')
+    def split_comma_separated_string(cls, data):
+        """
+        FastAPI not splitting values on , by default
+        """
+        list_fields = {"assetTypes", "symbols"}
+
+        for field in list_fields:
+            items = []
+            for item in data.get(field, []):
+                items += item.split(",")
+            data[field] = items
+        return data
 
 
 class OrdersFilter(BaseModel):
@@ -131,9 +147,37 @@ class OrdersFilter(BaseModel):
     status: Optional[OrderStatus] = None
     symbols: Optional[List[str]] = None
 
+    @model_validator(mode='before')
+    def split_comma_separated_string(cls, data):
+        """
+        FastAPI not splitting values on , by default
+        """
+        list_fields = {"symbols"}
+
+        for field in list_fields:
+            items = []
+            for item in data.get(field, []):
+                items += item.split(",")
+            data[field] = items
+        return data
+
 
 class TransactionsFilter(BaseModel):
     startDate: Optional[datetime.datetime] = None
     endDate: Optional[datetime.datetime] = None
     types: Optional[List[TransactionType]] = None
     symbols: Optional[List[str]] = None
+
+    @model_validator(mode='before')
+    def split_comma_separated_string(cls, data):
+        """
+        FastAPI not splitting values on , by default
+        """
+        list_fields = {"symbols"}
+
+        for field in list_fields:
+            items = []
+            for item in data.get(field, []):
+                items += item.split(",")
+            data[field] = items
+        return data

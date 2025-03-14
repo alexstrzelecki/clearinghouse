@@ -87,6 +87,7 @@ class Lot(BaseModel):
 
 class Position(BaseModel):
     symbol: str
+    assetType: str = Field(..., alias="asset_type")
     quantity: float
     lots: List[Lot]
     marketValue: float = Field(..., alias="market_value")
