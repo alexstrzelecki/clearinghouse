@@ -1,5 +1,4 @@
-from threading import active_count
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional, Any
 import datetime
 from requests import Response
 
@@ -20,9 +19,10 @@ from clearinghouse.models.response import (
     Quote,
     Transaction,
     SubmittedOrder,
-    Position
+    Position,
+    PreviewOrder
 )
-from clearinghouse.exceptions import ForbiddenException
+from clearinghouse.exceptions import ForbiddenException, NullPositionException, FailedOrderException
 
 
 # TODO: enforce symbol format - uppercase
@@ -172,25 +172,95 @@ def fetch_transaction_details(schwab_service: SchwabService, transaction_id: str
     return [schwab_to_ch_transaction(t) for t in decoded_resp][0]
 
 
-def adjust_position_fraction(schwab_service: SchwabService, symbol: str, fraction: float,
-                             open_new: bool = False, round_down: bool = False) -> SubmittedOrder:
+async def adjust_position_fraction(
+        schwab_service: SchwabService,
+        symbol: str,
+        fraction: float,
+        round_down: bool = False,
+        preview: bool = True
+) -> SubmittedOrder | PreviewOrder | None:
     """
     Adjust the current holding of a security by a fraction / percentage. It will round down to the closest quantity to
     minimize buying and selling and will not open new positions by default. Use negatives for position reductions.
-    TODO: should this accept a position or a symbol?
     TODO: address percentage reduction by lot / strategy - e.g. FIFO
+    TODO: return value of stable/failed order to concrete obj
     """
-    ...
+    # Fetch current positions
+    positions: List[Position] = fetch_positions(schwab_service)
+    position = next((p for p in positions if p.symbol == symbol), None)
+
+    if not position:
+        raise NullPositionException(symbol=symbol)
+    else:
+        current_quantity = position.quantity
+
+    target_quantity = current_quantity * (1 + fraction)
+
+    if round_down:
+        target_quantity = int(target_quantity)
+
+    quantity_difference = target_quantity - current_quantity
+
+    # Place order if there is a difference
+    if quantity_difference != 0:
+        order = Order(
+            symbol=symbol,
+            quantity=abs(quantity_difference),
+            order_type="buy" if quantity_difference > 0 else "sell",
+            price=position.market_value / position.quantity if position else 0  # Assuming market order
+        )
+        if not preview:
+            successful_orders, failed_orders = await place_orders(schwab_service, [order])
+            if successful_orders:
+                return successful_orders[0]
+            else:
+                raise Exception("Order placement failed.")
+        else:
+            return PreviewOrder(
+                symbol=symbol,
+                quantity=abs(quantity_difference),
+                order_type="buy" if quantity_difference > 0 else "sell",
+                price=position.market_value / position.quantity if position else 0,  # Assuming market order
+                duration="",
+                adjustment=fraction,
+            )
+
+    return None
 
 
-def adjust_bulk_positions_fractions(schwab_service: SchwabService, orders: List[AdjustmentOrder],
-                                    open_new: bool = False, round_down:bool = False) -> List[SubmittedOrder]:
+async def adjust_bulk_positions_fractions(
+        schwab_service: SchwabService,
+        orders: List[AdjustmentOrder],
+        round_down: bool = False,
+        preview: bool = True,
+) -> Dict[str, Any]:
     """
     Adjust the current holding of many securities by the fractions specified. It will round down to the closest quantity
     to minimize buying and selling and will not open new positions by default. Use negatives for position reductions.
 
     """
-    return []
+    results = {"successful": [], "failed": [], "stable": [], "preview": []}
+
+    for order in orders:
+        try:
+            processed_order = await adjust_position_fraction(
+                schwab_service,
+                symbol=order.symbol,
+                fraction=order.adjustment,
+                round_down=round_down,
+                preview=preview,
+            )
+            print(processed_order)
+            if processed_order and not preview:
+                results["successful"].append(processed_order)
+            elif processed_order and preview:
+                results["preview"].append(processed_order)
+            elif not processed_order:
+                results["stable"].append(order.symbol)
+        except Exception as e:
+            results["failed"].append({order.symbol: e})
+
+    return results
 
 
 def filter_positions(data: List[Position], filter_request: PositionsFilter) -> List[Position]:
@@ -211,7 +281,6 @@ def filter_positions(data: List[Position], filter_request: PositionsFilter) -> L
         item for item in data
         if all(f(item) for f in filters)
     ]
-    print(filtered_data)
 
     return filtered_data
 

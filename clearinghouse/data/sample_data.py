@@ -13,7 +13,7 @@ ACCOUNT_DETAILS_ALL = {
         "averagePrice": 0,
         "currentDayProfitLoss": 0,
         "currentDayProfitLossPercentage": 0,
-        "longQuantity": 0,
+        "longQuantity": 10,
         "settledLongQuantity": 0,
         "settledShortQuantity": 0,
         "agedQuantity": 0,
@@ -25,7 +25,7 @@ ACCOUNT_DETAILS_ALL = {
           "netChange": 0,
           "type": "SWEEP_VEHICLE"
         },
-        "marketValue": 0,
+        "marketValue": 100,
         "maintenanceRequirement": 0,
         "averageLongPrice": 0,
         "averageShortPrice": 0,

@@ -1,6 +1,6 @@
-from typing import List, Any, Annotated
+from typing import List, Any, Annotated, Dict
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, HTTPException, Query
 from starlette import status
 
 from clearinghouse.dependencies import SchwabService
@@ -13,11 +13,12 @@ from clearinghouse.models.request import (
 )
 from clearinghouse.models.response import (
     SubmittedOrder,
+    PreviewOrder,
     Quote,
     Transaction,
     Position,
     GenericItemResponse,
-    GenericCollectionResponse
+    GenericCollectionResponse,
 )
 from clearinghouse.services.response_generation import generate_generic_response
 from clearinghouse.services.orders_service import (
@@ -170,15 +171,17 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_201_CREATED,
         response_model=GenericCollectionResponse[SubmittedOrder],
     )
-    def adjust_position(
-        symbol_to_fraction: List[AdjustmentOrder]
-    ) -> GenericCollectionResponse[SubmittedOrder]:
+    async def adjust_position(
+        symbol_to_fraction: List[AdjustmentOrder], preview: bool=True
+    ) -> GenericCollectionResponse[SubmittedOrder | PreviewOrder | str]:
         """
         Adjusts the amount, by percentage, of current holdings.
         Payload requests that include an un-held security will be ignored.
         Can be used to sell existing securities (e.g. -1).
         """
-        data = adjust_bulk_positions_fractions(schwab_service, symbol_to_fraction)
-        return generate_generic_response("SubmittedOrder", data)
+        # TODO: determine how to report partial failures and stable values.
+        data: Dict[str, Any] = await adjust_bulk_positions_fractions(schwab_service, symbol_to_fraction, preview)
+        results = data["successful"] + data["preview"]
+        return generate_generic_response("AdjustmentOrder", results)
 
     return order_router

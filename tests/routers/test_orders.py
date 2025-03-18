@@ -167,10 +167,18 @@ def test_order_placement_batch(client):
     assert_meta_structure(resp.json(), "SubmittedOrdersList")
     assert resp.status_code == 201
 
-# def test_adjust_position(client):
-#     """
-#     Test for POST /v1/adjustments
-#     """
-#     adjustments = [{"symbol": "AAPL", "fraction": 0.5}]  # Example adjustment data
-#     resp = client.post(f"/{VERSION}/adjustments", json=adjustments)
-#     assert_meta_structure(resp.json(), "SubmittedOrder")
+def test_adjust_position(client):
+    """
+    Test for POST /v1/adjustments
+    """
+    adjustments = [
+          {
+            "symbol": "AAPL",
+            "price": 9.99,
+            "orderType": "limit",
+            "duration": "day",
+            "adjustment": 0.5
+          }
+    ]
+    resp = client.post(f"/{VERSION}/adjustments", json=adjustments)
+    assert_meta_structure(resp.json(), "AdjustmentOrder")

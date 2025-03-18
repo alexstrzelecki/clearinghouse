@@ -51,6 +51,15 @@ class SubmittedOrder(BaseModel):
     cancelable: bool = Field(..., alias="cancelable")
 
 
+class PreviewOrder(BaseModel):
+    price: float = Field(..., alias="price")
+    quantity: float = Field(..., alias="quantity")
+    orderType: str = Field(..., alias="order_type")
+    duration: str = Field(..., alias="duration")
+    adjustment: float = Field(..., alias="adjustment")
+    symbol: str = Field(..., alias="symbol")
+
+
 class Quote(BaseModel):
     """
     Current price model for equity/option.
