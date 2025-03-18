@@ -99,8 +99,8 @@ async def place_orders(schwab_service: SchwabService, orders: List[Order]) -> (L
     successful_orders, failed_orders = [], []
 
     for order in orders:
-        #TODO: Convert request into schwab_request
         resp = await _place_order(schwab_service, order.model_dump())
+
         if resp.status_code != 201:
             failed_orders.append(order)
         else:

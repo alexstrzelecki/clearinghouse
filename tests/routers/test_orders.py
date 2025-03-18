@@ -125,23 +125,49 @@ def test_get_bulk_quotes(client):
     assert_meta_structure(resp.json(), "QuotesList")
     assert resp.status_code == 200
 
-# def test_order_placement():
-#     """
-#     Test for POST /v1/orders
-#     """
-#     order_data = {"symbol": "AAPL", "quantity": 10, "orderType": "buy"}  # Example order data
-#     resp = client.post(f"/{VERSION}/orders", json=order_data)
-#     assert_meta_structure(resp.json(), "SubmittedOrder")
+def test_order_placement(client):
+    """
+    Test for POST /v1/orders
+    """
+    order_data = {
+        "symbol": "AAPL",
+        "quantity": "5",
+        "price": 9.99,
+        "orderType": "limit",
+        "duration": "day",
+        "operation": "buy"
+    }
+    resp = client.post(f"/{VERSION}/orders", json=order_data)
+    assert_meta_structure(resp.json(), "SubmittedOrder")
+    assert resp.status_code == 201
 
-# def test_order_placement_batch():
-#     """
-#     Test for POST /v1/orders/batch
-#     """
-#     orders_data = [{"symbol": "AAPL", "quantity": 10, "orderType": "buy"}]  # Example batch order data
-#     resp = client.post(f"/{VERSION}/orders/batch", json=orders_data)
-#     assert_meta_structure(resp.json(), "SubmittedOrdersList")
+def test_order_placement_batch(client):
+    """
+    Test for POST /v1/orders/batch
+    """
+    orders_data = [
+        {
+        "symbol": "AAPL",
+        "quantity": "5",
+        "price": 9.99,
+        "orderType": "limit",
+        "duration": "day",
+        "operation": "buy"
+        },
+        {
+        "symbol": "AMD",
+        "quantity": "10",
+        "price": 1234.40,
+        "orderType": "limit",
+        "duration": "day",
+        "operation": "sell"
+        }
+    ]
+    resp = client.post(f"/{VERSION}/orders/batch", json=orders_data)
+    assert_meta_structure(resp.json(), "SubmittedOrdersList")
+    assert resp.status_code == 201
 
-# def test_adjust_position():
+# def test_adjust_position(client):
 #     """
 #     Test for POST /v1/adjustments
 #     """
