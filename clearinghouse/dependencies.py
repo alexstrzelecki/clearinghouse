@@ -8,7 +8,6 @@ import schedule
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 import clearinghouse.data.sample_data as sample_data
-from clearinghouse.data.sample_data import ACCOUNT_DETAILS_ALL
 
 
 class SafetySettings(BaseSettings):
