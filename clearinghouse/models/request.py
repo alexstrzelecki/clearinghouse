@@ -1,5 +1,6 @@
 from typing import Optional, List, Self, Dict
 import datetime
+import logging
 
 from pydantic import BaseModel, Field, model_validator, field_validator
 
@@ -22,7 +23,11 @@ def _to_upper(fields: List[str], data: Dict[str, str]) -> Dict[str, str]:
     """
     Validation util to force strings to upper case to match the literals
     """
+    if isinstance(data, BaseModel):
+        data = data.model_dump()
+
     if not isinstance(data, dict):
+        logging.error("Input is not valid JSON", type(data))
         raise ValueError("Input is not JSON")
 
     for field in fields:
@@ -84,6 +89,8 @@ class AdjustmentOrder(BaseOrder):
         if self.adjustment < -1:
             raise ValueError("Cannot sell more than entire position.")
         return self
+
+
 
 class PositionsFilter(BaseModel):
     assetTypes: Optional[List[str]] = None

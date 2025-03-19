@@ -1,6 +1,7 @@
-from typing import Dict, List, Optional, Any, Literal, overload
+from typing import Dict, List, Optional, Any
 import datetime
 from requests import Response
+import logging
 
 import msgspec
 
@@ -98,8 +99,8 @@ async def _place_order(schwab_service: SchwabService, order: Dict) -> Response:
         order=order,
     )
 
-
-async def place_orders(schwab_service: SchwabService, orders: List[Order]) -> (List[Order], List[Order]):
+# TODO: add overloading for adjustment, regular, and preview order
+async def place_orders(schwab_service: SchwabService, orders: List[Order | AdjustmentOrder]) -> (List[Order], List[Order]):
     if schwab_service.read_only_mode:
         raise ForbiddenException()
 
@@ -154,14 +155,11 @@ def fetch_transactions(
     start_date = start_date or (now - datetime.timedelta(days=5))
     end_date = end_date or now
 
-    # Confirm suitability of provided transaction types
-    type_strings = [t.value for t in types] if types else None
-
     resp = schwab_service.client.transactions(
         accountHash=schwab_service.account_hash,
         startDate=start_date,
         endDate=end_date,
-        types=type_strings,
+        types=types,
         # symbol=symbol
     )
     decoded_resp = msgspec.json.decode(resp.text, type=List[schwab_response.Transaction])
@@ -210,12 +208,12 @@ async def adjust_position_fraction(
 
     # Place order if there is a difference
     # TODO: account for short positions -> translation back into Schwab orders
-    if quantity_difference != 0:
+    if quantity_difference != 0.0:
         order = Order(
             symbol=symbol,
             quantity=abs(quantity_difference),
             instruction="BUY" if quantity_difference > 0 else "SELL",
-            price=position.market_value / position.quantity if position else 0  # Assuming market order
+            price=position.marketValue / position.quantity if position else 0  # Assuming market order
         )
         if not preview:
             successful_orders, failed_orders = await place_orders(schwab_service, [order])
@@ -265,6 +263,7 @@ async def adjust_bulk_positions_fractions(
             elif not processed_order:
                 results["stable"].append(order.symbol)
         except Exception as e:
+            logging.warning(f"{order.model_dump()} {e}")
             results["failed"].append({order.symbol: e})
 
     return results
@@ -274,7 +273,6 @@ def filter_positions(data: List[Position], filter_request: PositionsFilter) -> L
     """
     Filter positions by input parameters.
     """
-    print(data)
     filters = [
         lambda p: p.assetType in filter_request.assetTypes if filter_request.assetTypes else True,
         lambda p: p.quantity >= 0 if not filter_request.shorts else True,

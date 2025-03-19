@@ -171,19 +171,19 @@ def create_order_endpoints(schwab_service: SchwabService):
     @order_router.post(
         "/adjustments",
         status_code=status.HTTP_201_CREATED,
-        response_model=GenericCollectionResponse[SubmittedOrder],
+        response_model=GenericCollectionResponse[RequestOrder],
     )
     async def adjust_position(
         symbol_to_fraction: List[AdjustmentOrder], preview: bool=True
-    ) -> GenericCollectionResponse[SubmittedOrder | PreviewOrder | str]:
+    ) -> GenericCollectionResponse[RequestOrder]:
         """
         Adjusts the amount, by percentage, of current holdings.
         Payload requests that include an un-held security will be ignored.
         Can be used to sell existing securities (e.g. -1).
         """
         # TODO: determine how to report partial failures and stable values.
-        data: Dict[str, Any] = await adjust_bulk_positions_fractions(schwab_service, symbol_to_fraction, preview)
+        data: Dict[str, Any] = await adjust_bulk_positions_fractions(schwab_service, symbol_to_fraction, preview=preview)
         results = data["successful"] + data["preview"]
-        return generate_generic_response("AdjustmentOrder", results)
+        return generate_generic_response("PositionAdjustmentList", results)
 
     return order_router

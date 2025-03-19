@@ -18,7 +18,7 @@ class Instrument(BaseModel):
 
 class OrderLeg(BaseModel):
     instruction: OrderInstruction
-    quantity: int
+    quantity: float
     instrument: Instrument
 
 
