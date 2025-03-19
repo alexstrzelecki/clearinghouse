@@ -18,13 +18,13 @@ def is_trade_within_max_dollar_trade_size(order: Order) -> bool:
 
 
 def is_sell_within_max_dollar_sell_size(order: Order) -> bool:
-    if order.operation == "sell":
+    if order.instruction == "sell":
         return order.price * order.amount <= safety_settings.max_dollar_sell_size
     return True
 
 
 def is_buy_within_max_dollar_buy_size(order: Order) -> bool:
-    if order.operation == "buy":
+    if order.instruction == "buy":
         return order.price * order.amount <= safety_settings.max_dollar_buy_size
     return True
 

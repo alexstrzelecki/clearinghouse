@@ -126,10 +126,12 @@ def create_order_endpoints(schwab_service: SchwabService):
         response_model=GenericCollectionResponse[Transaction],
     )
     def get_transactions(transaction_filter: Annotated[TransactionsFilter, Query(...)]) -> Any:
-        data = fetch_transactions(schwab_service,
-                                  start_date=transaction_filter.startDate,
-                                  end_date=transaction_filter.endDate,
-                                  types=transaction_filter.types)
+        data = fetch_transactions(
+            schwab_service,
+            start_date=transaction_filter.startDate,
+            end_date=transaction_filter.endDate,
+            types=transaction_filter.types
+        )
 
         filtered_data = filter_transactions(data, transaction_filter)
         return generate_generic_response("TransactionsList", filtered_data)

@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Literal, overload
 import datetime
 from requests import Response
 
@@ -6,14 +6,21 @@ import msgspec
 
 from clearinghouse.dependencies import SchwabService
 import clearinghouse.models.schwab_response as schwab_response
-from clearinghouse.models.request import (
-    Order,
+from clearinghouse.models.shared import (
     TransactionType,
     OrderStatus,
+)
+from clearinghouse.models.request import (
+    Order,
     AdjustmentOrder,
     PositionsFilter,
     OrdersFilter,
     TransactionsFilter,
+)
+from clearinghouse.models.schwab_request import (
+    SchwabOrder,
+    Instrument,
+    OrderLeg,
 )
 from clearinghouse.models.response import (
     Quote,
@@ -49,7 +56,7 @@ def fetch_orders(
     end_date = end_date or now
 
     # Enforce status option via Enum
-    status_arg = status.value if status else None
+    status_arg = status if status else None
 
     resp = schwab_service.client.account_orders(
         accountHash=schwab_service.account_hash,
@@ -99,7 +106,7 @@ async def place_orders(schwab_service: SchwabService, orders: List[Order]) -> (L
     successful_orders, failed_orders = [], []
 
     for order in orders:
-        resp = await _place_order(schwab_service, order.model_dump())
+        resp = await _place_order(schwab_service, order_to_schwab_order(order).model_dump())
 
         if resp.status_code != 201:
             failed_orders.append(order)
@@ -202,11 +209,12 @@ async def adjust_position_fraction(
     quantity_difference = target_quantity - current_quantity
 
     # Place order if there is a difference
+    # TODO: account for short positions -> translation back into Schwab orders
     if quantity_difference != 0:
         order = Order(
             symbol=symbol,
             quantity=abs(quantity_difference),
-            order_type="buy" if quantity_difference > 0 else "sell",
+            instruction="BUY" if quantity_difference > 0 else "SELL",
             price=position.market_value / position.quantity if position else 0  # Assuming market order
         )
         if not preview:
@@ -250,7 +258,6 @@ async def adjust_bulk_positions_fractions(
                 round_down=round_down,
                 preview=preview,
             )
-            print(processed_order)
             if processed_order and not preview:
                 results["successful"].append(processed_order)
             elif processed_order and preview:
@@ -383,4 +390,29 @@ def schwab_to_ch_order(order: schwab_response.Order) -> SubmittedOrder:
         cancel_time=datetime.datetime.strptime(order.cancelTime, "%Y-%m-%dT%H:%M:%S%z"),
         session=order.session,
         cancelable=order.cancelable
+    )
+
+
+def order_to_schwab_order(order: Order) -> SchwabOrder:
+    """
+    Convert a simplified Order Request to the one mandated by the Schwab API.
+    TODO: account for options requests.
+    TODO: account for multiple order legs per order
+    """
+    instrument = Instrument(
+        symbol=order.symbol,
+        assetType=order.assetType,
+    )
+    order_leg = OrderLeg(
+        instruction=order.instruction,
+        quantity=order.quantity,
+        instrument=instrument,
+    )
+    return SchwabOrder(
+        orderType=order.orderType,
+        session=order.session,
+        duration=order.duration,
+        orderStrategyType=order.strategyType,
+        price=order.price,
+        orderLegCollection=[order_leg],
     )

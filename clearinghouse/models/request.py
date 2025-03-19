@@ -10,6 +10,8 @@ from clearinghouse.models.shared import (
     OrderStatus,
     TransactionType,
     AssetType,
+    OrderSession,
+    OrderStrategyType,
 )
 
 """
@@ -20,6 +22,9 @@ def _to_upper(fields: List[str], data: Dict[str, str]) -> Dict[str, str]:
     """
     Validation util to force strings to upper case to match the literals
     """
+    if not isinstance(data, dict):
+        raise ValueError("Input is not JSON")
+
     for field in fields:
         if field in data.keys():
             data[field] = data[field].upper()
@@ -41,9 +46,11 @@ def _split_comma_sep_string(fields: List[str], data: Dict[str, str]) -> Dict[str
 class BaseOrder(BaseModel):
     symbol: str = Field(..., alias="symbol")
     price: float = Field(..., alias="price")
-    orderType: Optional[OrderType] = Field(default="MARKET")
-    duration: Optional[OrderDuration] = Field(default="DAY", alias="duration")
-    assetType: Optional[AssetType] = Field(default="EQUITY")
+    orderType: OrderType = Field(default="MARKET")
+    duration: OrderDuration = Field(default="DAY", alias="duration")
+    assetType: AssetType = Field(default="EQUITY")
+    session: OrderSession = Field(default="NORMAL")
+    strategyType: OrderStrategyType = Field(default="SINGLE")
 
     @model_validator(mode="before")
     def to_upper(cls, data):
@@ -51,7 +58,7 @@ class BaseOrder(BaseModel):
 
 class Order(BaseOrder):
     instruction: OrderInstruction = Field(..., alias="instruction")
-    quantity: int = Field(..., alias="quantity")
+    quantity: float = Field(..., alias="quantity")
 
     @model_validator(mode="after")
     def check_entries(self) -> Self:
