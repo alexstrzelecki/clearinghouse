@@ -1,97 +1,56 @@
+from typing import Optional, List, Self, Dict
 import datetime
-from typing_extensions import Self
-from typing import Optional, List
 
-from fastapi import Query
-from pydantic import BaseModel, Field, model_validator
-from enum import Enum
+from pydantic import BaseModel, Field, model_validator, field_validator
 
+from clearinghouse.models.shared import (
+    OrderInstruction,
+    OrderDuration,
+    OrderType,
+    OrderStatus,
+    TransactionType,
+    AssetType,
+)
 
-class TransactionType(Enum):
+"""
+Models to be used in clearinghouse requests
+"""
+
+def _to_upper(fields: List[str], data: Dict[str, str]) -> Dict[str, str]:
     """
-    Transaction types. Pulled from Schwab API documentation.
+    Validation util to force strings to upper case to match the literals
     """
-    TRADE = "TRADE"
-    RECEIVE_AND_DELIVER = "RECEIVE_AND_DELIVER"
-    DIVIDEND_OR_INTEREST = "DIVIDEND_OR_INTEREST"
-    ACH_RECEIPT = "ACH_RECEIPT"
-    ACH_DISBURSEMENT = "ACH_DISBURSEMENT"
-    CASH_RECEIPT = "CASH_RECEIPT"
-    CASH_DISBURSEMENT = "CASH_DISBURSEMENT"
-    ELECTRONIC_FUND = "ELECTRONIC_FUND"
-    WIRE_OUT = "WIRE_OUT"
-    WIRE_IN = "WIRE_IN"
-    JOURNAL = "JOURNAL"
-    MEMORANDUM = "MEMORANDUM"
-    MARGIN_CALL = "MARGIN_CALL"
-    MONEY_MARKET = "MONEY_MARKET"
-    SMA_ADJUSTMENT = "SMA_ADJUSTMENT"
+    for field in fields:
+        if field in data.keys():
+            data[field] = data[field].upper()
 
+    return data
 
-class OrderStatus(Enum):
+def _split_comma_sep_string(fields: List[str], data: Dict[str, str]) -> Dict[str, str]:
     """
-    Status options. Pulled from Schwab API documentation.
+    Validation util to force a comma-delimited string to a list.
     """
-    AWAITING_PARENT_ORDER = "AWAITING_PARENT_ORDER"
-    AWAITING_CONDITION = "AWAITING_CONDITION"
-    AWAITING_STOP_CONDITION = "AWAITING_STOP_CONDITION"
-    AWAITING_MANUAL_REVIEW = "AWAITING_MANUAL_REVIEW"
-    ACCEPTED = "ACCEPTED"
-    AWAITING_UR_OUT = "AWAITING_UR_OUT"
-    PENDING_ACTIVATION = "PENDING_ACTIVATION"
-    QUEUED = "QUEUED"
-    WORKING = "WORKING"
-    REJECTED = "REJECTED"
-    PENDING_CANCEL = "PENDING_CANCEL"
-    CANCELED = "CANCELED"
-    PENDING_REPLACE = "PENDING_REPLACE"
-    REPLACED = "REPLACED"
-    FILLED = "FILLED"
-    EXPIRED = "EXPIRED"
-    NEW = "NEW"
-    AWAITING_RELEASE_TIME = "AWAITING_RELEASE_TIME"
-    PENDING_ACKNOWLEDGEMENT = "PENDING_ACKNOWLEDGEMENT"
-    PENDING_RECALL = "PENDING_RECALL"
-    UNKNOWN = "UNKNOWN"
-
-
-class OrderOperation(str, Enum):
-    buy = "buy"
-    sell = "sell"
-    short = "short"
-    close = "close"
-
-
-class OrderType(str, Enum):
-    market = "market"
-    limit = "limit"
-    stop = "stop"
-
-
-class OrderAmountType(str, Enum):
-    percentage = "percentage"
-    shares = "shares"
-
-
-class OrderDuration(str, Enum):
-    """
-    For how long to keep the order open
-    TODO: add the remaining options
-    """
-    day = "day"
-    gtc = "gtc"
+    for field in fields:
+        items = []
+        for item in data.get(field, []):
+            items += item.split(",")
+        data[field] = items
+    return data
 
 
 class BaseOrder(BaseModel):
-    # TODO: add docstring explaining opaque attr
     symbol: str = Field(..., alias="symbol")
     price: float = Field(..., alias="price")
-    orderType: OrderType = Field(OrderType.market, alias="order_type")
-    duration: OrderDuration = Field(OrderDuration.day, alias="duration")
+    orderType: Optional[OrderType] = Field(default="MARKET")
+    duration: Optional[OrderDuration] = Field(default="DAY", alias="duration")
+    assetType: Optional[AssetType] = Field(default="EQUITY")
 
+    @model_validator(mode="before")
+    def to_upper(cls, data):
+        return _to_upper(["symbol", "orderType", "duration", "assetType"], data)
 
 class Order(BaseOrder):
-    operation: OrderOperation = Field(..., alias="operation")
+    instruction: OrderInstruction = Field(..., alias="instruction")
     quantity: int = Field(..., alias="quantity")
 
     @model_validator(mode="after")
@@ -100,6 +59,9 @@ class Order(BaseOrder):
             raise ValueError("Quantity cannot be negative.")
         return self
 
+    @model_validator(mode="before")
+    def to_upper(cls, data):
+        return _to_upper(["instruction", "symbol", "orderType", "duration", "assetType"], data)
 
 class AdjustmentOrder(BaseOrder):
     """
@@ -116,9 +78,8 @@ class AdjustmentOrder(BaseOrder):
             raise ValueError("Cannot sell more than entire position.")
         return self
 
-
 class PositionsFilter(BaseModel):
-    assetTypes: Optional[List[str]] = None  # TODO: make enum
+    assetTypes: Optional[List[str]] = None
     shorts: Optional[bool] = True
     longs: Optional[bool] = True
     minPositionSize: Optional[float] = None
@@ -127,17 +88,8 @@ class PositionsFilter(BaseModel):
 
     @model_validator(mode='before')
     def split_comma_separated_string(cls, data):
-        """
-        FastAPI not splitting values on , by default
-        """
-        list_fields = {"assetTypes", "symbols"}
-
-        for field in list_fields:
-            items = []
-            for item in data.get(field, []):
-                items += item.split(",")
-            data[field] = items
-        return data
+        """FastAPI not splitting values on , by default"""
+        return _split_comma_sep_string(["symbols"], data)
 
 
 class OrdersFilter(BaseModel):
@@ -149,17 +101,8 @@ class OrdersFilter(BaseModel):
 
     @model_validator(mode='before')
     def split_comma_separated_string(cls, data):
-        """
-        FastAPI not splitting values on , by default
-        """
-        list_fields = {"symbols"}
-
-        for field in list_fields:
-            items = []
-            for item in data.get(field, []):
-                items += item.split(",")
-            data[field] = items
-        return data
+        """FastAPI not splitting values on , by default"""
+        return _split_comma_sep_string(["symbols"], data)
 
 
 class TransactionsFilter(BaseModel):
@@ -170,14 +113,5 @@ class TransactionsFilter(BaseModel):
 
     @model_validator(mode='before')
     def split_comma_separated_string(cls, data):
-        """
-        FastAPI not splitting values on , by default
-        """
-        list_fields = {"symbols"}
-
-        for field in list_fields:
-            items = []
-            for item in data.get(field, []):
-                items += item.split(",")
-            data[field] = items
-        return data
+        """FastAPI not splitting values on , by default"""
+        return _split_comma_sep_string(["symbols"], data)

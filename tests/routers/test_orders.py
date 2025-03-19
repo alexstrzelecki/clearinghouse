@@ -135,7 +135,7 @@ def test_order_placement(client):
         "price": 9.99,
         "orderType": "limit",
         "duration": "day",
-        "operation": "buy"
+        "instruction": "buy"
     }
     resp = client.post(f"/{VERSION}/orders", json=order_data)
     assert_meta_structure(resp.json(), "SubmittedOrder")
@@ -152,7 +152,7 @@ def test_order_placement_batch(client):
         "price": 9.99,
         "orderType": "limit",
         "duration": "day",
-        "operation": "buy"
+        "instruction": "buy"
         },
         {
         "symbol": "AMD",
@@ -160,7 +160,7 @@ def test_order_placement_batch(client):
         "price": 1234.40,
         "orderType": "limit",
         "duration": "day",
-        "operation": "sell"
+        "instruction": "sell"
         }
     ]
     resp = client.post(f"/{VERSION}/orders/batch", json=orders_data)
