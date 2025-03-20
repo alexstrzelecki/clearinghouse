@@ -43,7 +43,7 @@ def fetch_orders(
     status: Optional[OrderStatus] = None
 ) -> List[SubmittedOrder]:
     """
-    Get a list of orders for the given account using the parameters provided.
+    Retrieve a list of orders for the given account using the provided parameters.
 
     :param schwab_service: Instantiated Schwab service
     :param start_date: Start date for filtering orders
@@ -72,6 +72,13 @@ def fetch_orders(
 
 
 def fetch_order_details(schwab_service: SchwabService, order_id: str) -> SubmittedOrder:
+    """
+    Retrieve details of a specific order by its ID.
+
+    :param schwab_service: Instantiated Schwab service
+    :param order_id: ID of the order to fetch details for
+    :return: Details of the submitted order
+    """
     resp = schwab_service.client.order_details(
         accountHash=schwab_service.account_hash,
         orderId=order_id,
@@ -82,7 +89,14 @@ def fetch_order_details(schwab_service: SchwabService, order_id: str) -> Submitt
 
 
 def fetch_positions(schwab_service: SchwabService, **kwargs) -> List[Position]:
-    # 'positions' fields returns a flat list of positions.
+    """
+    Retrieve a list of positions for the given account.
+
+    :param schwab_service: Instantiated Schwab service
+    :return: List of positions
+
+    TODO: kwargs to real filters
+    """
     resp = schwab_service.client.account_details(accountHash=schwab_service.account_hash, fields='positions')
     decoded_resp: List[schwab_response.SchwabPosition] = (
         msgspec.json.decode(resp.text, type=List[schwab_response.SchwabPosition]))
@@ -92,7 +106,12 @@ def fetch_positions(schwab_service: SchwabService, **kwargs) -> List[Position]:
 
 async def _place_order(schwab_service: SchwabService, order: Dict) -> Response:
     """
-    Schwab API returns status 201 and empty response body if successful.
+    Place an order using the Schwab API.
+    Client returns status 201 and empty response body if successful.
+
+    :param schwab_service: Instantiated Schwab service
+    :param order: Order data to be placed
+    :return: Response from the Schwab API
     """
     return schwab_service.client.order_place(
         accountHash=schwab_service.account_hash,
@@ -101,6 +120,13 @@ async def _place_order(schwab_service: SchwabService, order: Dict) -> Response:
 
 # TODO: add overloading for adjustment, regular, and preview order
 async def place_orders(schwab_service: SchwabService, orders: List[Order | AdjustmentOrder]) -> (List[Order], List[Order]):
+    """
+    Place multiple orders and return lists of successful and failed orders.
+
+    :param schwab_service: Instantiated Schwab service
+    :param orders: List of orders to be placed
+    :return: Tuple containing lists of successful and failed orders
+    """
     if schwab_service.read_only_mode:
         raise ForbiddenException()
 
@@ -118,6 +144,13 @@ async def place_orders(schwab_service: SchwabService, orders: List[Order | Adjus
 
 
 def cancel_order_request(schwab_service: SchwabService, order_id: str) -> int:
+    """
+    Cancel an order by its ID.
+
+    :param schwab_service: Instantiated Schwab service
+    :param order_id: ID of the order to be canceled
+    :return: Status code of the cancellation request
+    """
     if schwab_service.read_only_mode:
         raise ForbiddenException()
 
@@ -129,6 +162,13 @@ def cancel_order_request(schwab_service: SchwabService, order_id: str) -> int:
 
 
 def fetch_quotes(schwab_service: SchwabService, symbols: List[str]) -> List[Quote]:
+    """
+    Retrieve quotes for a list of symbols.
+
+    :param schwab_service: Instantiated Schwab service
+    :param symbols: List of symbols to fetch quotes for
+    :return: List of quotes
+    """
     resp = schwab_service.client.quote(symbols)
     decoded_resp = msgspec.json.decode(resp.text, type=Dict[str, schwab_response.Asset])
 
@@ -168,6 +208,13 @@ def fetch_transactions(
 
 
 def fetch_transaction_details(schwab_service: SchwabService, transaction_id: str) -> Transaction:
+    """
+    Retrieve details of a specific transaction by its ID.
+
+    :param schwab_service: Instantiated Schwab service
+    :param transaction_id: ID of the transaction to fetch details for
+    :return: Details of the transaction
+    """
     resp = schwab_service.client.transaction_details(
         accountHash=schwab_service.account_hash,
         transactionId=transaction_id,
@@ -185,10 +232,17 @@ async def adjust_position_fraction(
         preview: bool = True
 ) -> SubmittedOrder | PreviewOrder | None:
     """
-    Adjust the current holding of a security by a fraction / percentage. It will round down to the closest quantity to
+    Adjust the current holding of a security by a fraction. It will round down to the closest quantity to
     minimize buying and selling and will not open new positions by default. Use negatives for position reductions.
     TODO: address percentage reduction by lot / strategy - e.g. FIFO
     TODO: return value of stable/failed order to concrete obj
+
+    :param schwab_service: Instantiated Schwab service
+    :param symbol: Symbol of the security to adjust
+    :param fraction: Fraction/percentage to adjust the position by
+    :param round_down: Whether to round down the quantity
+    :param preview: Whether to perform a preview of the adjustment
+    :return: Submitted or preview order, or None if no adjustment is needed
     """
     # Fetch current positions
     positions: List[Position] = fetch_positions(schwab_service)
@@ -244,6 +298,11 @@ async def adjust_bulk_positions_fractions(
     Adjust the current holding of many securities by the fractions specified. It will round down to the closest quantity
     to minimize buying and selling and will not open new positions by default. Use negatives for position reductions.
 
+    :param schwab_service: Instantiated Schwab service
+    :param orders: List of adjustment orders specifying symbols and fractions
+    :param round_down: Whether to round down the quantity
+    :param preview: Whether to perform a preview of the adjustments
+    :return: Dictionary containing lists of successful, failed, stable, and preview orders
     """
     results = {"successful": [], "failed": [], "stable": [], "preview": []}
 
@@ -272,6 +331,10 @@ async def adjust_bulk_positions_fractions(
 def filter_positions(data: List[Position], filter_request: PositionsFilter) -> List[Position]:
     """
     Filter positions by input parameters.
+
+    :param data: List of positions to filter
+    :param filter_request: Filtering criteria
+    :return: List of filtered positions
     """
     filters = [
         lambda p: p.assetType in filter_request.assetTypes if filter_request.assetTypes else True,
@@ -294,6 +357,10 @@ def filter_transactions(data: List[Transaction], filter_request: TransactionsFil
     """
     Filter transactions by input parameters. Parameters not included here are done natively by the Schwab client.
     TODO: add symbol to transaction?
+
+    :param data: List of transactions to filter
+    :param filter_request: Filtering criteria
+    :return: List of filtered transactions
     """
     filters = [
         lambda t: t.type in filter_request.types if filter_request.types else True,
@@ -313,6 +380,10 @@ def filter_transactions(data: List[Transaction], filter_request: TransactionsFil
 def filter_orders(data: List[Order], filter_request: OrdersFilter) -> List[Order]:
     """
     Filter orders by input parameters. Parameters not included here are done natively by the Schwab client.
+
+    :param data: List of orders to filter
+    :param filter_request: Filtering criteria
+    :return: List of filtered orders
     """
     filters = [
         lambda o: o.symbol in filter_request.symbols if filter_request.symbols else True,
@@ -332,6 +403,13 @@ Mapping functions
 
 
 def schwab_to_ch_position(position: schwab_response.SchwabPosition) -> Position:
+    """
+    Convert a Schwab position response to a clearinghouse Position object.
+
+    :param position: Schwab position response
+    :return: Converted Position object
+    """
+
     # todo: helper for settling short or long position
     quantity = position.longQuantity or position.shortQuantity
     entry_value = position.averagePrice * quantity  # confirm this value
@@ -349,6 +427,12 @@ def schwab_to_ch_position(position: schwab_response.SchwabPosition) -> Position:
 
 
 def schwab_to_ch_transaction(transaction: schwab_response.Transaction) -> Transaction:
+    """
+    Convert a Schwab transaction response to a clearinghouse Transaction object.
+
+    :param transaction: Schwab transaction response
+    :return: Converted Transaction object
+    """
     # TODO: confirm that these are valid
     return Transaction(
         id=transaction.activityId,
@@ -362,6 +446,12 @@ def schwab_to_ch_transaction(transaction: schwab_response.Transaction) -> Transa
 
 
 def schwab_to_ch_quote(asset: schwab_response.Asset) -> Quote:
+    """
+    Convert a Schwab asset response to a clearinghouse Quote object.
+
+    :param asset: Schwab asset response
+    :return: Converted Quote object
+    """
     return Quote(
         symbol=asset.symbol,
         price=asset.quote.openPrice,
@@ -374,6 +464,12 @@ def schwab_to_ch_quote(asset: schwab_response.Asset) -> Quote:
 
 
 def schwab_to_ch_order(order: schwab_response.Order) -> SubmittedOrder:
+    """
+    Convert a Schwab order response to a clearinghouse SubmittedOrder object.
+
+    :param order: Schwab order response
+    :return: Converted SubmittedOrder object
+    """
     return SubmittedOrder(
         order_id=order.orderId,
         is_filled=(order.filledQuantity == order.quantity),
@@ -394,7 +490,11 @@ def schwab_to_ch_order(order: schwab_response.Order) -> SubmittedOrder:
 
 def order_to_schwab_order(order: Order) -> SchwabOrder:
     """
-    Convert a simplified Order Request to the one mandated by the Schwab API.
+    Convert a simplified Order Request to a Schwab API-compliant SchwabOrder object.
+
+    :param order: Simplified Order request
+    :return: SchwabOrder object
+
     TODO: account for options requests.
     TODO: account for multiple order legs per order
     """
