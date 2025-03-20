@@ -116,6 +116,7 @@ async def _place_order(schwab_service: SchwabService, order: Dict) -> Response:
         order=order,
     )
 
+
 # TODO: add overloading for adjustment, regular, and preview order
 async def place_orders(schwab_service: SchwabService, orders: List[Order | AdjustmentOrder]) -> (List[Order], List[Order]):
     """
@@ -265,7 +266,7 @@ async def adjust_position_fraction(
             symbol=symbol,
             quantity=abs(quantity_difference),
             instruction="BUY" if quantity_difference > 0 else "SELL",
-            price=position.marketValue / position.quantity if position else 0  # Assuming market order
+            price=position.market_value / position.quantity if position else 0  # Assuming market order
         )
         if not preview:
             successful_orders, failed_orders = await place_orders(schwab_service, [order])
@@ -278,7 +279,7 @@ async def adjust_position_fraction(
                 symbol=symbol,
                 quantity=abs(quantity_difference),
                 order_type="buy" if quantity_difference > 0 else "sell",
-                price=position.marketValue / position.quantity if position else 0,  # Assuming market order
+                price=position.market_value / position.quantity if position else 0,  # Assuming market order
                 duration="",
                 adjustment=fraction,
             )
@@ -335,11 +336,11 @@ def filter_positions(data: List[Position], filter_request: PositionsFilter) -> L
     :return: List of filtered positions
     """
     filters = [
-        lambda p: p.assetType in filter_request.assetTypes if filter_request.assetTypes else True,
+        lambda p: p.asset_type in filter_request.asset_types if filter_request.asset_types else True,
         lambda p: p.quantity >= 0 if not filter_request.shorts else True,
         lambda p: p.quantity <= 0 if not filter_request.longs else True,
-        lambda p: p.market_value >= filter_request.minPositionSize if filter_request.minPositionSize is not None else True,
-        lambda p: p.market_value <= filter_request.maxPositionSize if filter_request.maxPositionSize is not None else True,
+        lambda p: p.market_value >= filter_request.min_position_size if filter_request.min_position_size is not None else True,
+        lambda p: p.market_value <= filter_request.max_position_size if filter_request.max_position_size is not None else True,
         lambda p: p.symbol in filter_request.symbols if filter_request.symbols else True,
     ]
 
@@ -363,8 +364,8 @@ def filter_transactions(data: List[Transaction], filter_request: TransactionsFil
     filters = [
         lambda t: t.type in filter_request.types if filter_request.types else True,
         # lambda t: t.symbol in filter_request.symbols if filter_request.symbols else True,
-        lambda t: t.time >= filter_request.startDate if filter_request.startDate else True,
-        lambda t: t.time <= filter_request.endDate if filter_request.endDate else True,
+        lambda t: t.time >= filter_request.start_date if filter_request.start_date else True,
+        lambda t: t.time <= filter_request.end_date if filter_request.end_date else True,
     ]
 
     filtered_data = [
@@ -407,19 +408,18 @@ def schwab_to_ch_position(position: schwab_response.SchwabPosition) -> Position:
     :param position: Schwab position response
     :return: Converted Position object
     """
-
     # todo: helper for settling short or long position
-    quantity = position.longQuantity or position.shortQuantity
-    entry_value = position.averagePrice * quantity  # confirm this value
+    quantity = position.long_quantity or position.short_quantity
+    entry_value = position.average_price * quantity  # confirm this value
 
     return Position(
         symbol=position.instrument.symbol,
         asset_type=position.instrument.type,
         quantity=quantity,  # TODO: confirm how this resp is structured. see docs
         lots=[],  # TODO: confirm how this is structured in response. see docs
-        market_value=position.marketValue,
+        market_value=position.market_value,
         entry_value=entry_value,
-        net_change=position.instrument.netChange,
+        net_change=position.instrument.net_change,
         account_fraction=0,  # TODO: Add this as a calculated value
     )
 
@@ -433,13 +433,13 @@ def schwab_to_ch_transaction(transaction: schwab_response.Transaction) -> Transa
     """
     # TODO: confirm that these are valid
     return Transaction(
-        id=transaction.activityId,
-        order_id=transaction.orderId,
+        id=transaction.activity_id,
+        order_id=transaction.order_id,
         time=transaction.time,
         type=transaction.type,
         status=transaction.status,
-        net_amount=transaction.netAmount,
-        trade_date=transaction.tradeDate,
+        net_amount=transaction.net_amount,
+        trade_date=transaction.trade_date,
     )
 
 
@@ -452,12 +452,12 @@ def schwab_to_ch_quote(asset: schwab_response.Asset) -> Quote:
     """
     return Quote(
         symbol=asset.symbol,
-        price=asset.quote.openPrice,
-        quote_time=datetime.datetime.fromtimestamp(asset.quote.quoteTime / 1000),  # epoch time
-        total_volume=asset.quote.totalVolume,
-        net_percentage_change=asset.quote.netPercentChange,
-        bid_price=asset.quote.bidPrice,
-        ask_price=asset.quote.askPrice,
+        price=asset.quote.open_price,
+        quote_time=datetime.datetime.fromtimestamp(asset.quote.quote_time / 1000),  # epoch time
+        total_volume=asset.quote.total_volume,
+        net_percent_change=asset.quote.net_percent_change,
+        bid_price=asset.quote.bid_price,
+        ask_price=asset.quote.ask_price,
     )
 
 
@@ -469,18 +469,18 @@ def schwab_to_ch_order(order: schwab_response.Order) -> SubmittedOrder:
     :return: Converted SubmittedOrder object
     """
     return SubmittedOrder(
-        order_id=order.orderId,
-        is_filled=(order.filledQuantity == order.quantity),
+        order_id=order.order_id,
+        is_filled=(order.filled_quantity == order.quantity),
         total=order.price * order.quantity,
         duration=order.duration,
-        order_type=order.orderType,
+        order_type=order.order_type,
         price=order.price,
         quantity=order.quantity,
-        filled_quantity=order.filledQuantity,
-        remaining_quantity=order.remainingQuantity,
+        filled_quantity=order.filled_quantity,
+        remaining_quantity=order.remaining_quantity,
         status=order.status,
-        entered_time=datetime.datetime.strptime(order.enteredTime, "%Y-%m-%dT%H:%M:%S%z"),
-        cancel_time=datetime.datetime.strptime(order.cancelTime, "%Y-%m-%dT%H:%M:%S%z"),
+        entered_time=datetime.datetime.strptime(order.entered_time, "%Y-%m-%dT%H:%M:%S%z"),
+        cancel_time=datetime.datetime.strptime(order.cancel_time, "%Y-%m-%dT%H:%M:%S%z"),
         session=order.session,
         cancelable=order.cancelable
     )
@@ -498,7 +498,7 @@ def order_to_schwab_order(order: Order) -> SchwabOrder:
     """
     instrument = Instrument(
         symbol=order.symbol,
-        assetType=order.assetType,
+        asset_type=order.asset_type,
     )
     order_leg = OrderLeg(
         instruction=order.instruction,
@@ -506,10 +506,10 @@ def order_to_schwab_order(order: Order) -> SchwabOrder:
         instrument=instrument,
     )
     return SchwabOrder(
-        orderType=order.orderType,
+        order_type=order.order_type,
         session=order.session,
         duration=order.duration,
-        orderStrategyType=order.strategyType,
+        order_strategy_type=order.strategy_type,
         price=order.price,
-        orderLegCollection=[order_leg],
+        order_leg_collection=[order_leg],
     )

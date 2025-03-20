@@ -133,7 +133,7 @@ def test_order_placement(client):
         "symbol": "AAPL",
         "quantity": "5",
         "price": 9.99,
-        "orderType": "limit",
+        "order_type": "limit",
         "duration": "day",
         "instruction": "buy"
     }
@@ -150,7 +150,7 @@ def test_order_placement_batch(client):
         "symbol": "AAPL",
         "quantity": "5",
         "price": 9.99,
-        "orderType": "limit",
+        "order_type": "limit",
         "duration": "day",
         "instruction": "buy"
         },
@@ -158,7 +158,7 @@ def test_order_placement_batch(client):
         "symbol": "AMD",
         "quantity": "10",
         "price": 1234.40,
-        "orderType": "limit",
+        "order_type": "limit",
         "duration": "day",
         "instruction": "sell"
         }
@@ -176,7 +176,7 @@ def test_adjust_position_base(client):
         {
             "symbol": "AAPL",
             "price": 9.99,
-            "orderType": "LIMIT",
+            "order_type": "LIMIT",
             "duration": "DAY",
             "adjustment": 0.5
         }
@@ -196,7 +196,7 @@ def test_adjust_position_no_change(client):
         {
             "symbol": "AAPL",
             "price": 150.0,
-            "orderType": "MARKET",
+            "order_type": "MARKET",
             "duration": "DAY",
             "adjustment": 0.0  # No change
         }
@@ -217,7 +217,7 @@ def test_adjust_position_total_sell(client):
         {
             "symbol": "AAPL",
             "price": 150.0,
-            "orderType": "MARKET",
+            "order_type": "MARKET",
             "duration": "DAY",
             "adjustment": -1.0
         }
@@ -239,7 +239,7 @@ def test_adjust_position_open_new_position(client):
         {
             "symbol": "TSLA",
             "price": 700.0,
-            "orderType": "LIMIT",
+            "order_type": "LIMIT",
             "duration": "DAY",
             "adjustment": 1.0  # Attempt to open a new position
         }

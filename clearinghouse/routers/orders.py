@@ -61,20 +61,20 @@ def create_order_endpoints(schwab_service: SchwabService):
     def get_orders(orders_filter: Annotated[OrdersFilter, Query()]) -> Any:
         # TODO: settle submittedorder vs order
         data = fetch_orders(schwab_service,
-                            start_date=orders_filter.startDate,
-                            end_date=orders_filter.endDate,
-                            max_results=orders_filter.maxResults,
-                            status=orders_filter.status)
+                          start_date=orders_filter.start_date,
+                          end_date=orders_filter.end_date,
+                          max_results=orders_filter.max_results,
+                          status=orders_filter.status)
         filtered_data = filter_orders(data, orders_filter)
         return generate_generic_response("OrdersList", filtered_data)
 
     @order_router.get(
-        "/orders/{orderId}",
+        "/orders/{order_id}",
         status_code=status.HTTP_200_OK,
         response_model=GenericItemResponse[SubmittedOrder]
     )
-    def order_details(orderId: str) -> Any:
-        data = fetch_order_details(schwab_service, order_id=orderId)
+    def order_details(order_id: str) -> Any:
+        data = fetch_order_details(schwab_service, order_id=order_id)
 
         return generate_generic_response("OrderDetails", data)
 
@@ -109,15 +109,15 @@ def create_order_endpoints(schwab_service: SchwabService):
         return generate_generic_response("SubmittedOrdersList", successful)
 
     @order_router.delete(
-        "/orders/{orderId}",  # Ensure the path parameter matches the function argument
+        "/orders/{order_id}",  # Ensure the path parameter matches the function argument
         status_code=status.HTTP_204_NO_CONTENT,
     )
-    def cancel_order(orderId: str) -> None:
-        status_code = cancel_order_request(schwab_service, orderId)
+    def cancel_order(order_id: str) -> None:
+        status_code = cancel_order_request(schwab_service, order_id)
         if status_code != 200:
             raise HTTPException(
                 status_code=status_code,
-                detail=f"Failed to cancel order {orderId}",
+                detail=f"Failed to cancel order {order_id}",
             )
 
     @order_router.get(
@@ -128,8 +128,8 @@ def create_order_endpoints(schwab_service: SchwabService):
     def get_transactions(transaction_filter: Annotated[TransactionsFilter, Query(...)]) -> Any:
         data = fetch_transactions(
             schwab_service,
-            start_date=transaction_filter.startDate,
-            end_date=transaction_filter.endDate,
+            start_date=transaction_filter.start_date,
+            end_date=transaction_filter.end_date,
             types=transaction_filter.types
         )
 
@@ -137,14 +137,13 @@ def create_order_endpoints(schwab_service: SchwabService):
         return generate_generic_response("TransactionsList", filtered_data)
 
     @order_router.get(
-        "/transactions/{transactionId}",
+        "/transactions/{transaction_id}",
         status_code=status.HTTP_200_OK,
         response_model=GenericItemResponse[Transaction],
     )
-    def get_transactions_details(transactionId: str) -> Any:
-        data = fetch_transaction_details(schwab_service, transactionId)
+    def get_transactions_details(transaction_id: str) -> Any:
+        data = fetch_transaction_details(schwab_service, transaction_id)
         return generate_generic_response("Transaction", data)
-
 
     @order_router.get(
         "/quotes/{symbol}",
@@ -157,7 +156,6 @@ def create_order_endpoints(schwab_service: SchwabService):
         data = fetch_quotes(schwab_service, [symbol])[0]
         return generate_generic_response("Quote", data)
 
-
     @order_router.post(
         "/quotes",
         status_code=status.HTTP_200_OK,
@@ -166,7 +164,6 @@ def create_order_endpoints(schwab_service: SchwabService):
     def get_bulk_quotes(symbols: List[str]) -> Any:
         data = fetch_quotes(schwab_service, symbols)
         return generate_generic_response("QuotesList", data)
-
 
     @order_router.post(
         "/adjustments",

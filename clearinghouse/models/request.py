@@ -2,7 +2,7 @@ from typing import Optional, List, Self, Dict
 import datetime
 import logging
 
-from pydantic import BaseModel, Field, model_validator, field_validator
+from pydantic import BaseModel, Field, model_validator
 
 from clearinghouse.models.shared import (
     OrderInstruction,
@@ -49,21 +49,23 @@ def _split_comma_sep_string(fields: List[str], data: Dict[str, str]) -> Dict[str
 
 
 class BaseOrder(BaseModel):
-    symbol: str = Field(..., alias="symbol")
-    price: float = Field(..., alias="price")
-    orderType: OrderType = Field(default="MARKET")
-    duration: OrderDuration = Field(default="DAY", alias="duration")
-    assetType: AssetType = Field(default="EQUITY")
+    symbol: str
+    price: float
+    order_type: OrderType = Field(default="MARKET")
+    duration: OrderDuration = Field(default="DAY")
+    asset_type: AssetType = Field(default="EQUITY")
     session: OrderSession = Field(default="NORMAL")
-    strategyType: OrderStrategyType = Field(default="SINGLE")
+    strategy_type: OrderStrategyType = Field(default="SINGLE")
 
+    # noinspection PyNestedDecorators
     @model_validator(mode="before")
+    @classmethod
     def to_upper(cls, data):
-        return _to_upper(["symbol", "orderType", "duration", "assetType"], data)
+        return _to_upper(["symbol", "order_type", "duration", "asset_type"], data)
 
 class Order(BaseOrder):
-    instruction: OrderInstruction = Field(..., alias="instruction")
-    quantity: float = Field(..., alias="quantity")
+    instruction: OrderInstruction
+    quantity: float
 
     @model_validator(mode="after")
     def check_entries(self) -> Self:
@@ -71,9 +73,11 @@ class Order(BaseOrder):
             raise ValueError("Quantity cannot be negative.")
         return self
 
+    # noinspection PyNestedDecorators
     @model_validator(mode="before")
+    @classmethod
     def to_upper(cls, data):
-        return _to_upper(["instruction", "symbol", "orderType", "duration", "assetType"], data)
+        return _to_upper(["instruction", "symbol", "order_type", "duration", "asset_type"], data)
 
 class AdjustmentOrder(BaseOrder):
     """
@@ -82,7 +86,7 @@ class AdjustmentOrder(BaseOrder):
     adjustment: Fraction increase/decrease in a position
         e.g. 0.5 for 50% increase.
     """
-    adjustment: float = Field(..., alias="adjustment")
+    adjustment: float
 
     @model_validator(mode="after")
     def check_entries(self) -> Self:
@@ -91,41 +95,46 @@ class AdjustmentOrder(BaseOrder):
         return self
 
 
-
 class PositionsFilter(BaseModel):
-    assetTypes: Optional[List[str]] = None
+    asset_types: Optional[List[str]] = None
     shorts: Optional[bool] = True
     longs: Optional[bool] = True
-    minPositionSize: Optional[float] = None
-    maxPositionSize: Optional[float] = None
+    min_position_size: Optional[float] = None
+    max_position_size: Optional[float] = None
     symbols: Optional[List[str]] = None
 
-    @model_validator(mode='before')
+    # noinspection PyNestedDecorators
+    @model_validator(mode="before")
+    @classmethod
     def split_comma_separated_string(cls, data):
         """FastAPI not splitting values on , by default"""
         return _split_comma_sep_string(["symbols"], data)
 
 
 class OrdersFilter(BaseModel):
-    startDate: Optional[datetime.datetime] = None
-    endDate: Optional[datetime.datetime] = None
-    maxResults: Optional[int] = None
+    start_date: Optional[datetime.datetime] = None
+    end_date: Optional[datetime.datetime] = None
+    max_results: Optional[int] = None
     status: Optional[OrderStatus] = None
     symbols: Optional[List[str]] = None
 
-    @model_validator(mode='before')
+    # noinspection PyNestedDecorators
+    @model_validator(mode="before")
+    @classmethod
     def split_comma_separated_string(cls, data):
         """FastAPI not splitting values on , by default"""
         return _split_comma_sep_string(["symbols"], data)
 
 
 class TransactionsFilter(BaseModel):
-    startDate: Optional[datetime.datetime] = None
-    endDate: Optional[datetime.datetime] = None
+    start_date: Optional[datetime.datetime] = None
+    end_date: Optional[datetime.datetime] = None
     types: Optional[List[TransactionType]] = None
     symbols: Optional[List[str]] = None
 
-    @model_validator(mode='before')
+    # noinspection PyNestedDecorators
+    @model_validator(mode="before")
+    @classmethod
     def split_comma_separated_string(cls, data):
         """FastAPI not splitting values on , by default"""
         return _split_comma_sep_string(["symbols"], data)

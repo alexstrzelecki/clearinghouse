@@ -1,9 +1,5 @@
-from typing import List
+from typing import List, Generic, TypeVar
 import datetime
-
-from pydantic import Field
-
-from typing import Generic, TypeVar, Optional
 from pydantic import BaseModel
 
 
@@ -35,29 +31,29 @@ class SubmittedOrder(BaseModel):
     """
     Simplified transaction model for the original Schwab API return model.
     """
-    orderId: int = Field(..., alias="order_id")
-    isFilled: bool = Field(..., alias="is_filled")
-    total: float = Field(..., alias="total")
-    duration: str = Field(..., alias="duration")
-    orderType: str = Field(..., alias="order_type")
-    price: float = Field(..., alias="price")
-    quantity: float = Field(..., alias="quantity")
-    filledQuantity: float = Field(..., alias="filled_quantity")
-    remainingQuantity: float = Field(..., alias="remaining_quantity")
-    status: str = Field(..., alias="status")
-    enteredTime: datetime.datetime = Field(..., alias="entered_time")
-    cancelTime: datetime.datetime = Field(..., alias="cancel_time")
-    session: str = Field(..., alias="session")
-    cancelable: bool = Field(..., alias="cancelable")
+    order_id: int
+    is_filled: bool
+    total: float
+    duration: str
+    order_type: str
+    price: float
+    quantity: float
+    filled_quantity: float
+    remaining_quantity: float
+    status: str
+    entered_time: datetime.datetime
+    cancel_time: datetime.datetime
+    session: str
+    cancelable: bool
 
 
 class PreviewOrder(BaseModel):
-    price: float = Field(..., alias="price")
-    quantity: float = Field(..., alias="quantity")
-    orderType: str = Field(..., alias="order_type")
-    duration: str = Field(..., alias="duration")
-    adjustment: float = Field(..., alias="adjustment")
-    symbol: str = Field(..., alias="symbol")
+    price: float
+    quantity: float
+    order_type: str
+    duration: str
+    adjustment: float
+    symbol: str
 
 
 class Quote(BaseModel):
@@ -67,11 +63,11 @@ class Quote(BaseModel):
     """
     symbol: str
     price: float
-    quoteTime: datetime.datetime = Field(..., alias="quote_time")
-    totalVolume: int = Field(..., alias="total_volume")
-    netPercentageChange: float = Field(..., alias="net_percentage_change")
-    bidPrice: float = Field(..., alias="bid_price")
-    askPrice: float = Field(..., alias="ask_price")
+    quote_time: datetime.datetime
+    total_volume: int
+    net_percent_change: float
+    bid_price: float
+    ask_price: float
 
 
 class Transaction(BaseModel):
@@ -79,27 +75,27 @@ class Transaction(BaseModel):
     Simplified transaction model for the original Schwab API return model.
     TODO: finish the attr collection for this
     """
-    id: int = Field(..., alias="id")
-    orderId: int = Field(..., alias="order_id")
-    time: datetime.datetime = Field(..., alias="time")
-    type: str = Field(..., alias="type")
-    status: str = Field(..., alias="status")
-    netAmount: float = Field(..., alias="net_amount")
-    trade_date: datetime.datetime = Field(..., alias="trade_date")
+    id: int
+    order_id: int
+    time: datetime.datetime
+    type: str
+    status: str
+    net_amount: float
+    trade_date: datetime.datetime
 
 
 class Lot(BaseModel):
-    acquisitionDate: datetime.datetime = Field(..., alias="acquisition_date")
+    acquisition_date: datetime.datetime
     quantity: float
     price: float
 
 
 class Position(BaseModel):
     symbol: str
-    assetType: str = Field(..., alias="asset_type")
+    asset_type: str
     quantity: float
     lots: List[Lot]
-    marketValue: float = Field(..., alias="market_value")
-    entryValue: float = Field(..., alias="entry_value")
-    netChange: float = Field(..., alias="net_change")
-    accountFraction: float = Field(..., alias="account_fraction")
+    market_value: float
+    entry_value: float
+    net_change: float
+    account_fraction: float
