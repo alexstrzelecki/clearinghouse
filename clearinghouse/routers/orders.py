@@ -1,6 +1,6 @@
 from typing import List, Any, Annotated, Dict
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from starlette import status
 
 from clearinghouse.dependencies import SchwabService
@@ -19,6 +19,7 @@ from clearinghouse.models.response import (
     Position,
     GenericItemResponse,
     GenericCollectionResponse,
+    OrderResult,
 )
 from clearinghouse.services.response_generation import generate_generic_response
 from clearinghouse.services.orders_service import (
@@ -59,12 +60,12 @@ def create_order_endpoints(schwab_service: SchwabService):
         response_model=GenericCollectionResponse[StandardOrder]
     )
     def get_orders(orders_filter: Annotated[OrdersFilter, Query()]) -> Any:
-        # TODO: settle submittedorder vs order
-        data = fetch_orders(schwab_service,
-                          start_date=orders_filter.start_date,
-                          end_date=orders_filter.end_date,
-                          max_results=orders_filter.max_results,
-                          status=orders_filter.status)
+        data = fetch_orders(
+            schwab_service,
+            start_date=orders_filter.start_date,
+            end_date=orders_filter.end_date,
+            max_results=orders_filter.max_results,
+            status=orders_filter.status)
         filtered_data = filter_orders(data, orders_filter)
         return generate_generic_response("OrdersList", filtered_data)
 
@@ -81,32 +82,34 @@ def create_order_endpoints(schwab_service: SchwabService):
     @order_router.post(
         "/orders",
         status_code=status.HTTP_201_CREATED,
-        response_model=GenericItemResponse[RequestOrder]
+        response_model=GenericItemResponse[OrderResult]
     )
-    async def order_placement(order: RequestOrder) -> Any:
-        successful, failed = await place_orders(schwab_service, [order])
+    async def order_placement(order: RequestOrder, response: Response) -> Any:
+        results: List[OrderResult]
+        results, _ = await place_orders(schwab_service, [order])
 
-        if any(failed):
-            # TODO: handle partial failures
-            pass
+        if results[0].status == "FAILED":
+            response.status_code = 403
 
-        return generate_generic_response("SubmittedOrder", successful[0])
+        return generate_generic_response("OrderResult", results[0])
 
     @order_router.post(
         "/orders/batch",
         status_code=status.HTTP_201_CREATED,
-        response_model=GenericCollectionResponse[RequestOrder]
+        response_model=GenericCollectionResponse[OrderResult]
     )
-    async def order_placement_batch(orders: List[RequestOrder]) -> Any:
+    async def order_placement_batch(orders: List[RequestOrder], response: Response) -> Any:
         """
+
         """
-        successful, failed = await place_orders(schwab_service, orders)
+        results: List[OrderResult]
+        count: Dict[str, int]
+        results, count = await place_orders(schwab_service, orders)
 
-        if any(failed):
-            # TODO: handle partial failures
-            pass
+        if count["FAILED"] > 0 or count["IGNORED"] > 0:
+            response.status_code = 207
 
-        return generate_generic_response("SubmittedOrdersList", successful)
+        return generate_generic_response("OrderResultList", results)
 
     @order_router.delete(
         "/orders/{order_id}",  # Ensure the path parameter matches the function argument
@@ -171,16 +174,19 @@ def create_order_endpoints(schwab_service: SchwabService):
         response_model=GenericCollectionResponse[AdjustmentOrderResult],
     )
     async def adjust_position(
-        symbol_to_fraction: List[AdjustmentOrder], preview: bool=True
+        symbol_to_fraction: List[AdjustmentOrder], preview: bool=True, response: Response = None
     ) -> GenericCollectionResponse[AdjustmentOrderResult]:
         """
         Adjusts the amount, by percentage, of current holdings.
         Payload requests that include an un-held security will be ignored.
         Can be used to sell existing securities (e.g. -1).
         """
-        # TODO: determine how to report partial failures and stable values.
-        data = await adjust_bulk_positions_fractions(schwab_service, symbol_to_fraction, preview=preview)
-        results = data["successful"]
+        results: List[AdjustmentOrderResult]
+        count: Dict[str, int]
+        results, count = await adjust_bulk_positions_fractions(schwab_service, symbol_to_fraction, preview=preview)
+
+        if count["FAILED"] > 0 or count["IGNORED"] > 0:
+            response.status_code = 207
         return generate_generic_response("AdjustmentOrderList", results)
 
     return order_router

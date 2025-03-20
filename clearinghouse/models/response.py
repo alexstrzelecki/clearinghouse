@@ -1,11 +1,13 @@
-from typing import List, Generic, TypeVar
+from typing import List, Generic, TypeVar, Literal
 import datetime
 from pydantic import BaseModel
 
-from clearinghouse.models.request import AdjustmentOrder
+from clearinghouse.models.request import AdjustmentOrder, Order
 
 
 T = TypeVar("T", bound=BaseModel)
+
+InitialOrderStatus = Literal["IGNORED", "FAILED", "SUCCEEDED", "PREVIEW"]
 
 
 class Meta(BaseModel):
@@ -49,10 +51,22 @@ class StandardOrder(BaseModel):
     cancelable: bool
 
 
+class OrderResult(Order):
+    """
+    Model representing the return from a place order or similar request.
+    Does not include the order ID and advanced values due to limitations from the Schwab API. Only returned on
+    subsequent queries.
+    """
+    status: InitialOrderStatus
+    info: str = ""
+
+
 class AdjustmentOrderResult(AdjustmentOrder):
     adjustment: float
     quantity: float  # represents the delta
     total_position_size: float  # represents the new position size
+    status: InitialOrderStatus
+    info: str = ""
 
 
 class Quote(BaseModel):

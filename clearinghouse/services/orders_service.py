@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, get_args
 import datetime
 from requests import Response
 import logging
@@ -28,7 +28,9 @@ from clearinghouse.models.response import (
     Transaction,
     StandardOrder,
     Position,
-    AdjustmentOrderResult
+    AdjustmentOrderResult,
+    InitialOrderStatus,
+    OrderResult,
 )
 from clearinghouse.exceptions import ForbiddenException, NullPositionException, FailedOrderException
 
@@ -118,7 +120,7 @@ async def _place_order(schwab_service: SchwabService, order: Dict) -> Response:
 
 
 # TODO: add overloading for adjustment, regular, and preview order
-async def place_orders(schwab_service: SchwabService, orders: List[Order]) -> (List[Order], List[Order]):
+async def place_orders(schwab_service: SchwabService, orders: List[Order]) -> (List[OrderResult], Dict[str, int]):
     """
     Place multiple orders and return lists of successful and failed orders.
 
@@ -129,17 +131,20 @@ async def place_orders(schwab_service: SchwabService, orders: List[Order]) -> (L
     if schwab_service.read_only_mode:
         raise ForbiddenException()
 
-    successful_orders, failed_orders = [], []
+    results = []
+    count = {k: 0 for k in get_args(InitialOrderStatus)}
 
     for order in orders:
         resp = await _place_order(schwab_service, order_to_schwab_order(order).model_dump())
 
-        if resp.status_code != 201:
-            failed_orders.append(order)
+        if resp.status_code == 201:
+            results.append(OrderResult(**order.model_dump(), status="SUCCEEDED"))
+            count["SUCCEEDED"] += 1
         else:
-            successful_orders.append(order)
+            results.append(OrderResult(**order.model_dump(), status="FAILED"))
+            count["FAILED"] += 1
 
-    return successful_orders, failed_orders
+    return results, count
 
 
 def cancel_order_request(schwab_service: SchwabService, order_id: str) -> int:
@@ -229,7 +234,7 @@ async def adjust_position_fraction(
         fraction: float,
         round_down: bool = False,
         preview: bool = True
-) -> AdjustmentOrderResult | None:
+) -> AdjustmentOrderResult:
     """
     Adjust the current holding of a security by a fraction. It will round down to the closest quantity to
     minimize buying and selling and will not open new positions by default. Use negatives for position reductions.
@@ -247,7 +252,15 @@ async def adjust_position_fraction(
     position = next((p for p in positions if p.symbol == symbol), None)
 
     if not position:
-        raise NullPositionException(symbol=symbol)
+        return AdjustmentOrderResult(
+            symbol=symbol,
+            adjustment=fraction,
+            price=0,
+            quantity=0,
+            total_position_size=0,
+            status="FAILED",
+            info="No existing position"
+        )
     else:
         current_quantity = position.quantity
 
@@ -261,35 +274,45 @@ async def adjust_position_fraction(
     # Place order if there is a difference
     # TODO: account for short positions -> translation back into Schwab orders
     # TODO: account for market vs. limit orders - default for setting the price
+    kwargs = {
+        "symbol": symbol,
+        "quantity": abs(quantity_difference),
+        "instruction": "BUY" if quantity_difference > 0 else "SELL",
+        "price": 0  # this does not work for now
+    }
+    total_position_size = kwargs["quantity"] + current_quantity
     if quantity_difference != 0.0:
-        kwargs = {
-            "symbol": symbol,
-            "quantity": abs(quantity_difference),
-            "instruction": "BUY" if quantity_difference > 0 else "SELL",
-            "price": 0  # this does not work for now
-        }
         if not preview:
             successful_orders: List[Order]
-            failed_orders: List[Order]
-            successful_orders, failed_orders = await place_orders(schwab_service, [Order(**kwargs)])
-            if failed_orders:
-                raise FailedOrderException(symbol=symbol, message="Failed to place order")
+            results, _ = await place_orders(schwab_service, [Order(**kwargs)])
+            if results[0].status == "FAILED":
+                return AdjustmentOrderResult(
+                    total_position_size=total_position_size,
+                    status="FAILED",
+                    info="Misc. failure"
+                    **kwargs
+                )
 
         return AdjustmentOrderResult(
-            total_position_size=kwargs["quantity"] + current_quantity,
+            total_position_size=total_position_size,
             adjustment=fraction,
+            status="PREVIEW" if preview else "SUCCEEDED",
             **kwargs
         )
-
-    return None
-
+    else:
+        return AdjustmentOrderResult(
+            total_position_size=total_position_size,
+            adjustment=fraction,
+            status="IGNORED",
+            **kwargs
+        )
 
 async def adjust_bulk_positions_fractions(
         schwab_service: SchwabService,
         orders: List[AdjustmentOrder],
         round_down: bool = False,
         preview: bool = True,
-) -> Dict[str, List[AdjustmentOrderResult]]:
+) -> (List[AdjustmentOrderResult], Dict[str, int]):
     """
     Adjust the current holding of many securities by the fractions specified. It will round down to the closest quantity
     to minimize buying and selling and will not open new positions by default. Use negatives for position reductions.
@@ -298,27 +321,23 @@ async def adjust_bulk_positions_fractions(
     :param orders: List of adjustment orders specifying symbols and fractions
     :param round_down: Whether to round down the quantity
     :param preview: Whether to perform a preview of the adjustments
-    :return: Dictionary containing lists of successful, failed, stable, and preview orders
+    :return: List containing of successful, failed, stable, and preview orders; Dict of the result counts
     """
-    results = {"successful": [], "failed": []}
+    results = []
+    count = {k: 0 for k in get_args(InitialOrderStatus)}
 
     for order in orders:
-        try:
-            processed_order = await adjust_position_fraction(
-                schwab_service,
-                symbol=order.symbol,
-                fraction=order.adjustment,
-                round_down=round_down,
-                preview=preview,
-            )
-            # Do not need to process null orders
-            if processed_order:
-                results["successful"].append(processed_order)
-        except FailedOrderException as e:
-            logging.warning(f"{order.model_dump()} {e}")
-            results["failed"].append({order.symbol: e})
+        processed_order = await adjust_position_fraction(
+            schwab_service,
+            symbol=order.symbol,
+            fraction=order.adjustment,
+            round_down=round_down,
+            preview=preview,
+        )
+        results.append(processed_order)
+        count[processed_order.status] += 1
 
-    return results
+    return results, count
 
 
 def filter_positions(data: List[Position], filter_request: PositionsFilter) -> List[Position]:

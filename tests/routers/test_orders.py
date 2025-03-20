@@ -1,4 +1,5 @@
 from typing import Dict
+from collections import Counter
 
 import pytest
 from fastapi.testclient import TestClient
@@ -138,7 +139,7 @@ def test_order_placement(client):
         "instruction": "buy"
     }
     resp = client.post(f"/{VERSION}/orders", json=order_data)
-    assert_meta_structure(resp.json(), "SubmittedOrder")
+    assert_meta_structure(resp.json(), "OrderResult")
     assert resp.status_code == 201
 
 def test_order_placement_batch(client):
@@ -164,7 +165,7 @@ def test_order_placement_batch(client):
         }
     ]
     resp = client.post(f"/{VERSION}/orders/batch", json=orders_data)
-    assert_meta_structure(resp.json(), "SubmittedOrdersList")
+    assert_meta_structure(resp.json(), "OrderResultList")
     assert resp.status_code == 201
 
 def test_adjust_position_base(client):
@@ -183,7 +184,11 @@ def test_adjust_position_base(client):
     ]
     resp = client.post("/v1/adjustments?preview=False", json=adjustments)
     assert resp.status_code == 201
-    assert_meta_structure(resp.json(), "AdjustmentOrderList")
+    data = resp.json()
+    assert_meta_structure(data, "AdjustmentOrderList")
+
+    count = Counter([d["status"] for d in data["data"]])
+    assert count["SUCCEEDED"] == 1
 
 
 def test_adjust_position_no_change(client):
@@ -202,10 +207,13 @@ def test_adjust_position_no_change(client):
         }
     ]
     resp = client.post("/v1/adjustments", json=adjustments)
-    assert resp.status_code == 201
+    assert resp.status_code == 207
     data = resp.json()
     assert_meta_structure(data, "AdjustmentOrderList")
-    assert len(data["data"]) == 0
+    assert len(data["data"]) == 1
+    item = data["data"][0]
+    assert item["symbol"] == "AAPL"
+    assert item["status"] == "IGNORED"
 
 
 def test_adjust_position_total_sell(client):
@@ -245,9 +253,12 @@ def test_adjust_position_open_new_position(client):
         }
     ]
     resp = client.post("/v1/adjustments", json=adjustments)
-    assert resp.status_code == 403
+    assert resp.status_code == 207
+    data = resp.json().get("data")
+    assert data[0]["status"] == "FAILED"
+    assert len(data) == 1
 
-def test_adjust_position_preview_false(client):
+def test_adjust_position_preview_true(client):
     """
     Test for POST /v1/adjustments with preview set to False.
     Ensures that adjustments are actually processed.
@@ -261,11 +272,14 @@ def test_adjust_position_preview_false(client):
             "adjustment": 0.5
         }
     ]
-    resp = client.post("/v1/adjustments?preview=False", json=adjustments)
+    resp = client.post("/v1/adjustments?preview=True", json=adjustments)
     assert resp.status_code == 201
     data = resp.json()
     assert_meta_structure(data, "AdjustmentOrderList")
-    assert len(data["data"]) > 0  # Ensure at least one order is processed
+    assert len(data["data"]) == 1
+
+    count = Counter([d["status"] for d in data["data"]])
+    assert count["PREVIEW"] == 1
 
 
 def test_adjust_position_multi_item_all_processed(client):
@@ -294,6 +308,9 @@ def test_adjust_position_multi_item_all_processed(client):
     assert_meta_structure(data, "AdjustmentOrderList")
     assert len(data["data"]) == 2
 
+    count = Counter([d["status"] for d in data["data"]])
+    assert count["SUCCEEDED"] == 2
+
 
 def test_adjust_position_multi_item_some_processed(client):
     """
@@ -316,10 +333,15 @@ def test_adjust_position_multi_item_some_processed(client):
         }
     ]
     resp = client.post("/v1/adjustments?preview=False", json=adjustments)
-    assert resp.status_code == 403
-    # data = resp.json()
-    # assert_meta_structure(data, "AdjustmentOrderList")
-    # assert len(data["data"]) == 1  # Ensure only valid order is processed
+    assert resp.status_code == 207
+    data = resp.json()
+    assert_meta_structure(data, "AdjustmentOrderList")
+
+    assert len(data["data"]) == 2
+    count = Counter([d["status"] for d in data["data"]])
+    assert count["FAILED"] == 1
+    assert count["SUCCEEDED"] == 1
+
 
 
 def test_adjust_position_multi_item_none_processed(client):
@@ -344,7 +366,11 @@ def test_adjust_position_multi_item_none_processed(client):
         }
     ]
     resp = client.post("/v1/adjustments?preview=False", json=adjustments)
-    assert resp.status_code == 403  # Assuming the service returns 403 for invalid symbols
-    # data = resp.json()
-    # assert_meta_structure(data, "AdjustmentOrderList")
-    # assert len(data["data"]) == 0  # Ensure no orders are processed
+    assert resp.status_code == 207
+    data = resp.json()
+    assert_meta_structure(data, "AdjustmentOrderList")
+    assert len(data["data"]) == 2
+
+    count = Counter([d["status"] for d in data["data"]])
+    assert count["IGNORED"] == 1
+    assert count["FAILED"] == 1
