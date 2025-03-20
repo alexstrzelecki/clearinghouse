@@ -226,7 +226,7 @@ async def adjust_position_fraction(
                 symbol=symbol,
                 quantity=abs(quantity_difference),
                 order_type="buy" if quantity_difference > 0 else "sell",
-                price=position.market_value / position.quantity if position else 0,  # Assuming market order
+                price=position.marketValue / position.quantity if position else 0,  # Assuming market order
                 duration="",
                 adjustment=fraction,
             )
@@ -329,6 +329,7 @@ def filter_orders(data: List[Order], filter_request: OrdersFilter) -> List[Order
 """
 Mapping functions
 """
+
 
 def schwab_to_ch_position(position: schwab_response.SchwabPosition) -> Position:
     # todo: helper for settling short or long position

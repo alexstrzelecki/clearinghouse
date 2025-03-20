@@ -184,6 +184,6 @@ def create_order_endpoints(schwab_service: SchwabService):
         # TODO: determine how to report partial failures and stable values.
         data: Dict[str, Any] = await adjust_bulk_positions_fractions(schwab_service, symbol_to_fraction, preview=preview)
         results = data["successful"] + data["preview"]
-        return generate_generic_response("PositionAdjustmentList", results)
+        return generate_generic_response("AdjustmentOrderList", results)
 
     return order_router

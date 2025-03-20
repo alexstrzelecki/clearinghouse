@@ -39,7 +39,7 @@ def test_get_positions_no_filter(client):
 
     assert_meta_structure(resp.json(), "PositionsList")
     assert resp.status_code == 200
-    assert len(data) == 1
+    assert len(data) == 5
 
 def test_get_positions_filter_positive(client):
     """
@@ -167,18 +167,87 @@ def test_order_placement_batch(client):
     assert_meta_structure(resp.json(), "SubmittedOrdersList")
     assert resp.status_code == 201
 
-def test_adjust_position(client):
+def test_adjust_position_base(client):
     """
-    Test for POST /v1/adjustments
+    Test for POST /v1/adjustments.
+    Basic test to ensure adjustments are processed correctly.
     """
     adjustments = [
-          {
+        {
             "symbol": "AAPL",
             "price": 9.99,
-            "orderType": "limit",
-            "duration": "day",
+            "orderType": "LIMIT",
+            "duration": "DAY",
             "adjustment": 0.5
-          }
+        }
     ]
-    resp = client.post(f"/{VERSION}/adjustments", json=adjustments)
-    assert_meta_structure(resp.json(), "AdjustmentOrder")
+    resp = client.post("/v1/adjustments?preview=False", json=adjustments)
+    assert resp.status_code == 201
+    assert_meta_structure(resp.json(), "AdjustmentOrderList")
+
+
+def test_adjust_position_no_change(client):
+    """
+    Test for POST /v1/adjustments.
+    The positions should match the requested adjustment and should return no orders.
+    """
+    # TODO: get the current position in the sample data
+    adjustments = [
+        {
+            "symbol": "AAPL",
+            "price": 150.0,
+            "orderType": "MARKET",
+            "duration": "DAY",
+            "adjustment": 0.0  # No change
+        }
+    ]
+    resp = client.post("/v1/adjustments", json=adjustments)
+    assert resp.status_code == 201
+    data = resp.json()
+    assert_meta_structure(data, "AdjustmentOrderList")
+    assert len(data["data"]) == 0
+
+
+def test_adjust_position_total_sell(client):
+    """
+    Test for POST /v1/adjustments.
+    Check whether a position can be completely sold to cash.
+    """
+    adjustments = [
+        {
+            "symbol": "AAPL",
+            "price": 150.0,
+            "orderType": "MARKET",
+            "duration": "DAY",
+            "adjustment": -1.0
+        }
+    ]
+    resp = client.post("/v1/adjustments?preview=False", json=adjustments)
+    assert resp.status_code == 201
+    data = resp.json()
+    assert_meta_structure(data, "AdjustmentOrderList")
+    assert len(data["data"]) == 1
+
+    # TODO: assert that there are no shares remaining - not currently possible due to local client limitations
+
+def test_adjust_position_open_new_position(client):
+    """
+    Test for POST /v1/adjustments.
+    The request to open a new position by adjustment should be blocked.
+    """
+    adjustments = [
+        {
+            "symbol": "TSLA",
+            "price": 700.0,
+            "orderType": "LIMIT",
+            "duration": "DAY",
+            "adjustment": 1.0  # Attempt to open a new position
+        }
+    ]
+    resp = client.post("/v1/adjustments?preview=False", json=adjustments)
+    assert resp.status_code == 201
+    data = resp.json()
+    assert_meta_structure(data, "AdjustmentOrderList")
+    assert len(data["data"]) == 0
+
+# TODO: add preview = True tests to make sure items not being sold
