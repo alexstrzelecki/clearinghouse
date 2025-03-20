@@ -33,8 +33,6 @@ from clearinghouse.models.response import (
 from clearinghouse.exceptions import ForbiddenException, NullPositionException, FailedOrderException
 
 
-# TODO: enforce symbol format - uppercase
-
 def fetch_orders(
     schwab_service: SchwabService,
     start_date: Optional[datetime.datetime] = None,
