@@ -26,9 +26,9 @@ from clearinghouse.models.schwab_request import (
 from clearinghouse.models.response import (
     Quote,
     Transaction,
-    SubmittedOrder,
+    StandardOrder,
     Position,
-    PreviewOrder
+    AdjustmentOrderResult
 )
 from clearinghouse.exceptions import ForbiddenException, NullPositionException, FailedOrderException
 
@@ -39,7 +39,7 @@ def fetch_orders(
     end_date: Optional[datetime.datetime] = None,
     max_results: Optional[int] = 3000,
     status: Optional[OrderStatus] = None
-) -> List[SubmittedOrder]:
+) -> List[StandardOrder]:
     """
     Retrieve a list of orders for the given account using the provided parameters.
 
@@ -69,7 +69,7 @@ def fetch_orders(
     return [schwab_to_ch_order(k) for k in decoded_resp]
 
 
-def fetch_order_details(schwab_service: SchwabService, order_id: str) -> SubmittedOrder:
+def fetch_order_details(schwab_service: SchwabService, order_id: str) -> StandardOrder:
     """
     Retrieve details of a specific order by its ID.
 
@@ -118,7 +118,7 @@ async def _place_order(schwab_service: SchwabService, order: Dict) -> Response:
 
 
 # TODO: add overloading for adjustment, regular, and preview order
-async def place_orders(schwab_service: SchwabService, orders: List[Order | AdjustmentOrder]) -> (List[Order], List[Order]):
+async def place_orders(schwab_service: SchwabService, orders: List[Order]) -> (List[Order], List[Order]):
     """
     Place multiple orders and return lists of successful and failed orders.
 
@@ -229,7 +229,7 @@ async def adjust_position_fraction(
         fraction: float,
         round_down: bool = False,
         preview: bool = True
-) -> SubmittedOrder | PreviewOrder | None:
+) -> AdjustmentOrderResult | None:
     """
     Adjust the current holding of a security by a fraction. It will round down to the closest quantity to
     minimize buying and selling and will not open new positions by default. Use negatives for position reductions.
@@ -243,7 +243,6 @@ async def adjust_position_fraction(
     :param preview: Whether to perform a preview of the adjustment
     :return: Submitted or preview order, or None if no adjustment is needed
     """
-    # Fetch current positions
     positions: List[Position] = fetch_positions(schwab_service)
     position = next((p for p in positions if p.symbol == symbol), None)
 
@@ -261,28 +260,26 @@ async def adjust_position_fraction(
 
     # Place order if there is a difference
     # TODO: account for short positions -> translation back into Schwab orders
+    # TODO: account for market vs. limit orders - default for setting the price
     if quantity_difference != 0.0:
-        order = Order(
-            symbol=symbol,
-            quantity=abs(quantity_difference),
-            instruction="BUY" if quantity_difference > 0 else "SELL",
-            price=position.market_value / position.quantity if position else 0  # Assuming market order
-        )
+        kwargs = {
+            "symbol": symbol,
+            "quantity": abs(quantity_difference),
+            "instruction": "BUY" if quantity_difference > 0 else "SELL",
+            "price": 0  # this does not work for now
+        }
         if not preview:
-            successful_orders, failed_orders = await place_orders(schwab_service, [order])
-            if successful_orders:
-                return successful_orders[0]
-            else:
-                raise Exception("Order placement failed.")
-        else:
-            return PreviewOrder(
-                symbol=symbol,
-                quantity=abs(quantity_difference),
-                order_type="buy" if quantity_difference > 0 else "sell",
-                price=position.market_value / position.quantity if position else 0,  # Assuming market order
-                duration="",
-                adjustment=fraction,
-            )
+            successful_orders: List[Order]
+            failed_orders: List[Order]
+            successful_orders, failed_orders = await place_orders(schwab_service, [Order(**kwargs)])
+            if failed_orders:
+                raise FailedOrderException(symbol=symbol, message="Failed to place order")
+
+        return AdjustmentOrderResult(
+            total_position_size=kwargs["quantity"] + current_quantity,
+            adjustment=fraction,
+            **kwargs
+        )
 
     return None
 
@@ -292,7 +289,7 @@ async def adjust_bulk_positions_fractions(
         orders: List[AdjustmentOrder],
         round_down: bool = False,
         preview: bool = True,
-) -> Dict[str, Any]:
+) -> Dict[str, List[AdjustmentOrderResult]]:
     """
     Adjust the current holding of many securities by the fractions specified. It will round down to the closest quantity
     to minimize buying and selling and will not open new positions by default. Use negatives for position reductions.
@@ -303,7 +300,7 @@ async def adjust_bulk_positions_fractions(
     :param preview: Whether to perform a preview of the adjustments
     :return: Dictionary containing lists of successful, failed, stable, and preview orders
     """
-    results = {"successful": [], "failed": [], "stable": [], "preview": []}
+    results = {"successful": [], "failed": []}
 
     for order in orders:
         try:
@@ -314,13 +311,10 @@ async def adjust_bulk_positions_fractions(
                 round_down=round_down,
                 preview=preview,
             )
-            if processed_order and not preview:
+            # Do not need to process null orders
+            if processed_order:
                 results["successful"].append(processed_order)
-            elif processed_order and preview:
-                results["preview"].append(processed_order)
-            elif not processed_order:
-                results["stable"].append(order.symbol)
-        except Exception as e:
+        except FailedOrderException as e:
             logging.warning(f"{order.model_dump()} {e}")
             results["failed"].append({order.symbol: e})
 
@@ -461,14 +455,14 @@ def schwab_to_ch_quote(asset: schwab_response.Asset) -> Quote:
     )
 
 
-def schwab_to_ch_order(order: schwab_response.Order) -> SubmittedOrder:
+def schwab_to_ch_order(order: schwab_response.Order) -> StandardOrder:
     """
     Convert a Schwab order response to a clearinghouse SubmittedOrder object.
 
     :param order: Schwab order response
     :return: Converted SubmittedOrder object
     """
-    return SubmittedOrder(
+    return StandardOrder(
         order_id=order.order_id,
         is_filled=(order.filled_quantity == order.quantity),
         total=order.price * order.quantity,
@@ -513,3 +507,5 @@ def order_to_schwab_order(order: Order) -> SchwabOrder:
         price=order.price,
         order_leg_collection=[order_leg],
     )
+
+

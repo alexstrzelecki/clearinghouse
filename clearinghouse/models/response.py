@@ -2,6 +2,8 @@ from typing import List, Generic, TypeVar
 import datetime
 from pydantic import BaseModel
 
+from clearinghouse.models.request import AdjustmentOrder
+
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -27,7 +29,7 @@ class GenericCollectionResponse(BaseResponse[T]):
     data: List[T]
 
 
-class SubmittedOrder(BaseModel):
+class StandardOrder(BaseModel):
     """
     Simplified transaction model for the original Schwab API return model.
     """
@@ -47,13 +49,10 @@ class SubmittedOrder(BaseModel):
     cancelable: bool
 
 
-class PreviewOrder(BaseModel):
-    price: float
-    quantity: float
-    order_type: str
-    duration: str
+class AdjustmentOrderResult(AdjustmentOrder):
     adjustment: float
-    symbol: str
+    quantity: float  # represents the delta
+    total_position_size: float  # represents the new position size
 
 
 class Quote(BaseModel):

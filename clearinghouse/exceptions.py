@@ -10,7 +10,7 @@ class NullPositionException(HTTPException):
     """Raised when there is no current position in the account."""
     def __init__(self, symbol: str = ""):
         if symbol:
-            detail_message = f" No current position position for symbol: {symbol}."
+            detail_message = f"No current position for symbol: {symbol}."
         else:
             detail_message = f"No position found"
         super().__init__(status_code=403, detail=detail_message)

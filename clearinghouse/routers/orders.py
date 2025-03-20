@@ -12,8 +12,8 @@ from clearinghouse.models.request import (
     TransactionsFilter,
 )
 from clearinghouse.models.response import (
-    SubmittedOrder,
-    PreviewOrder,
+    StandardOrder,
+    AdjustmentOrderResult,
     Quote,
     Transaction,
     Position,
@@ -56,7 +56,7 @@ def create_order_endpoints(schwab_service: SchwabService):
     @order_router.get(
         "/orders",
         status_code=status.HTTP_200_OK,
-        response_model=GenericCollectionResponse[SubmittedOrder]
+        response_model=GenericCollectionResponse[StandardOrder]
     )
     def get_orders(orders_filter: Annotated[OrdersFilter, Query()]) -> Any:
         # TODO: settle submittedorder vs order
@@ -71,7 +71,7 @@ def create_order_endpoints(schwab_service: SchwabService):
     @order_router.get(
         "/orders/{order_id}",
         status_code=status.HTTP_200_OK,
-        response_model=GenericItemResponse[SubmittedOrder]
+        response_model=GenericItemResponse[StandardOrder]
     )
     def order_details(order_id: str) -> Any:
         data = fetch_order_details(schwab_service, order_id=order_id)
@@ -168,19 +168,19 @@ def create_order_endpoints(schwab_service: SchwabService):
     @order_router.post(
         "/adjustments",
         status_code=status.HTTP_201_CREATED,
-        response_model=GenericCollectionResponse[RequestOrder],
+        response_model=GenericCollectionResponse[AdjustmentOrderResult],
     )
     async def adjust_position(
         symbol_to_fraction: List[AdjustmentOrder], preview: bool=True
-    ) -> GenericCollectionResponse[RequestOrder]:
+    ) -> GenericCollectionResponse[AdjustmentOrderResult]:
         """
         Adjusts the amount, by percentage, of current holdings.
         Payload requests that include an un-held security will be ignored.
         Can be used to sell existing securities (e.g. -1).
         """
         # TODO: determine how to report partial failures and stable values.
-        data: Dict[str, Any] = await adjust_bulk_positions_fractions(schwab_service, symbol_to_fraction, preview=preview)
-        results = data["successful"] + data["preview"]
+        data = await adjust_bulk_positions_fractions(schwab_service, symbol_to_fraction, preview=preview)
+        results = data["successful"]
         return generate_generic_response("AdjustmentOrderList", results)
 
     return order_router

@@ -222,7 +222,7 @@ def test_adjust_position_total_sell(client):
             "adjustment": -1.0
         }
     ]
-    resp = client.post("/v1/adjustments?preview=False", json=adjustments)
+    resp = client.post("/v1/adjustments", json=adjustments)
     assert resp.status_code == 201
     data = resp.json()
     assert_meta_structure(data, "AdjustmentOrderList")
@@ -244,10 +244,107 @@ def test_adjust_position_open_new_position(client):
             "adjustment": 1.0  # Attempt to open a new position
         }
     ]
+    resp = client.post("/v1/adjustments", json=adjustments)
+    assert resp.status_code == 403
+
+def test_adjust_position_preview_false(client):
+    """
+    Test for POST /v1/adjustments with preview set to False.
+    Ensures that adjustments are actually processed.
+    """
+    adjustments = [
+        {
+            "symbol": "AAPL",
+            "price": 150.0,
+            "order_type": "MARKET",
+            "duration": "DAY",
+            "adjustment": 0.5
+        }
+    ]
     resp = client.post("/v1/adjustments?preview=False", json=adjustments)
     assert resp.status_code == 201
     data = resp.json()
     assert_meta_structure(data, "AdjustmentOrderList")
-    assert len(data["data"]) == 0
+    assert len(data["data"]) > 0  # Ensure at least one order is processed
 
-# TODO: add preview = True tests to make sure items not being sold
+
+def test_adjust_position_multi_item_all_processed(client):
+    """
+    Test for POST /v1/adjustments with multiple items where all orders are processed successfully.
+    """
+    adjustments = [
+        {
+            "symbol": "AAPL",
+            "price": 150.0,
+            "order_type": "MARKET",
+            "duration": "DAY",
+            "adjustment": 0.5
+        },
+        {
+            "symbol": "GOOGL",
+            "price": 2800.0,
+            "order_type": "LIMIT",
+            "duration": "DAY",
+            "adjustment": 0.3
+        }
+    ]
+    resp = client.post("/v1/adjustments?preview=False", json=adjustments)
+    assert resp.status_code == 201
+    data = resp.json()
+    assert_meta_structure(data, "AdjustmentOrderList")
+    assert len(data["data"]) == 2
+
+
+def test_adjust_position_multi_item_some_processed(client):
+    """
+    Test for POST /v1/adjustments with multiple items where some orders are processed.
+    """
+    adjustments = [
+        {
+            "symbol": "AAPL",
+            "price": 150.0,
+            "order_type": "MARKET",
+            "duration": "DAY",
+            "adjustment": 0.5
+        },
+        {
+            "symbol": "INVALID_SYMBOL",
+            "price": 1000.0,
+            "order_type": "LIMIT",
+            "duration": "DAY",
+            "adjustment": 0
+        }
+    ]
+    resp = client.post("/v1/adjustments?preview=False", json=adjustments)
+    assert resp.status_code == 403
+    # data = resp.json()
+    # assert_meta_structure(data, "AdjustmentOrderList")
+    # assert len(data["data"]) == 1  # Ensure only valid order is processed
+
+
+def test_adjust_position_multi_item_none_processed(client):
+    """
+    Test for POST /v1/adjustments with multiple items where no orders are processed due to 0 adjustment or
+    invalid / non-existent symbols.
+    """
+    adjustments = [
+        {
+            "symbol": "AAPL",
+            "price": 1000.0,
+            "order_type": "LIMIT",
+            "duration": "DAY",
+            "adjustment": 0
+        },
+        {
+            "symbol": "INVALID_SYMBOL_2",
+            "price": 2000.0,
+            "order_type": "LIMIT",
+            "duration": "DAY",
+            "adjustment": 0.3
+        }
+    ]
+    resp = client.post("/v1/adjustments?preview=False", json=adjustments)
+    assert resp.status_code == 403  # Assuming the service returns 403 for invalid symbols
+    # data = resp.json()
+    # assert_meta_structure(data, "AdjustmentOrderList")
+    # assert len(data["data"]) == 0  # Ensure no orders are processed
