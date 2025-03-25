@@ -50,7 +50,7 @@ def _split_comma_sep_string(fields: List[str], data: Dict[str, str]) -> Dict[str
 
 class BaseOrder(BaseModel):
     symbol: str
-    price: float
+    price: float = None
     order_type: OrderType = Field(default="MARKET")
     duration: OrderDuration = Field(default="DAY")
     asset_type: AssetType = Field(default="EQUITY")
@@ -62,6 +62,13 @@ class BaseOrder(BaseModel):
     @classmethod
     def to_upper(cls, data):
         return _to_upper(["symbol", "order_type", "duration", "asset_type"], data)
+
+    @model_validator(mode="after")
+    def validate_price(self):
+        if self.price is not None and self.order_type == "MARKET":
+            raise ValueError("Price cannot be set for market orders.")
+        return self
+
 
 class NumericalOrder(BaseOrder):
     """

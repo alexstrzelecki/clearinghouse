@@ -200,7 +200,6 @@ def test_adjust_position_no_change(client):
     adjustments = [
         {
             "symbol": "AAPL",
-            "price": 150.0,
             "order_type": "MARKET",
             "duration": "DAY",
             "adjustment": 0.0  # No change
@@ -224,7 +223,6 @@ def test_adjust_position_total_sell(client):
     adjustments = [
         {
             "symbol": "AAPL",
-            "price": 150.0,
             "order_type": "MARKET",
             "duration": "DAY",
             "adjustment": -1.0
@@ -266,7 +264,6 @@ def test_adjust_position_preview_true(client):
     adjustments = [
         {
             "symbol": "AAPL",
-            "price": 150.0,
             "order_type": "MARKET",
             "duration": "DAY",
             "adjustment": 0.5
@@ -289,7 +286,6 @@ def test_adjust_position_multi_item_all_processed(client):
     adjustments = [
         {
             "symbol": "AAPL",
-            "price": 150.0,
             "order_type": "MARKET",
             "duration": "DAY",
             "adjustment": 0.5
@@ -319,7 +315,6 @@ def test_adjust_position_multi_item_some_processed(client):
     adjustments = [
         {
             "symbol": "AAPL",
-            "price": 150.0,
             "order_type": "MARKET",
             "duration": "DAY",
             "adjustment": 0.5

@@ -1,8 +1,15 @@
-from typing import List, Generic, TypeVar, Literal
+from typing import List, Generic, TypeVar, Literal, Optional
 import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from clearinghouse.models.request import AdjustmentOrder, NumericalOrder
+from clearinghouse.models.shared import (
+    OrderInstruction,
+    OrderType,
+    OrderDuration,
+    AssetType,
+    OrderSession,
+    OrderStrategyType,
+)
 
 
 T = TypeVar("T", bound=BaseModel)
@@ -50,18 +57,35 @@ class StandardOrder(BaseModel):
     session: str
     cancelable: bool
 
-
-class OrderResult(NumericalOrder):
+class OrderResult(BaseModel):
     """
     Model representing the return from a place order or similar request.
     Does not include the order ID and advanced values due to limitations from the Schwab API. Only returned on
     subsequent queries.
     """
+    symbol: str
+    order_type: OrderType = Field(default="MARKET")
+    duration: OrderDuration = Field(default="DAY")
+    asset_type: AssetType = Field(default="EQUITY")
+    session: OrderSession = Field(default="NORMAL")
+    strategy_type: OrderStrategyType = Field(default="SINGLE")
+    instruction: OrderInstruction
+    quantity: float
+    price: Optional[float] = None
     status: InitialOrderStatus
     info: str = ""
 
 
-class AdjustmentOrderResult(AdjustmentOrder):
+class AdjustmentOrderResult(BaseModel):
+    """
+    Model representing the result of an adjustment order.
+    """
+    symbol: str
+    order_type: OrderType = Field(default="MARKET")
+    duration: OrderDuration = Field(default="DAY")
+    asset_type: AssetType = Field(default="EQUITY")
+    session: OrderSession = Field(default="NORMAL")
+    strategy_type: OrderStrategyType = Field(default="SINGLE")
     adjustment: float
     quantity: float  # represents the delta
     total_position_size: float  # represents the new position size

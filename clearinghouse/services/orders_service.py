@@ -369,7 +369,6 @@ async def adjust_position_fraction(
         return AdjustmentOrderResult(
             symbol=symbol,
             adjustment=fraction,
-            price=0,
             quantity=0,
             total_position_size=0,
             status="FAILED",
@@ -388,11 +387,11 @@ async def adjust_position_fraction(
     # Place order if there is a difference
     # TODO: account for short positions -> translation back into Schwab orders
     # TODO: account for market vs. limit orders - default for setting the price
+    #
     kwargs = {
         "symbol": symbol,
         "quantity": abs(quantity_difference),
         "instruction": "BUY" if quantity_difference > 0 else "SELL",
-        "price": 0  # this does not work for now
     }
     total_position_size = kwargs["quantity"] + current_quantity
     if quantity_difference != 0.0:
@@ -632,13 +631,14 @@ def order_to_schwab_order(order: NumericalOrder) -> SchwabOrder:
         quantity=order.quantity,
         instrument=instrument,
     )
-    return SchwabOrder(
-        order_type=order.order_type,
-        session=order.session,
-        duration=order.duration,
-        order_strategy_type=order.strategy_type,
-        price=order.price,
-        order_leg_collection=[order_leg],
-    )
+    kwargs = {
+        "order_type": order.order_type,
+        "session": order.session,
+        "duration": order.duration,
+        "order_strategy_type": order.strategy_type,
+        "order_leg_collection": [order_leg],
+    }
+    if order.price:
+        kwargs["price"] = order.price
 
-
+    return SchwabOrder(**kwargs)
