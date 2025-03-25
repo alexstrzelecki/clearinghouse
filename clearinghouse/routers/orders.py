@@ -20,7 +20,7 @@ from clearinghouse.models.response import (
     Position,
     GenericItemResponse,
     GenericCollectionResponse,
-    OrderResult,
+    NumericalOrderResult,
 )
 from clearinghouse.services.response_generation import generate_generic_response
 from clearinghouse.services.orders_service import (
@@ -83,13 +83,13 @@ def create_order_endpoints(schwab_service: SchwabService):
     @order_router.post(
         "/orders",
         status_code=status.HTTP_201_CREATED,
-        response_model=GenericItemResponse[OrderResult]
+        response_model=GenericItemResponse[NumericalOrderResult]
     )
     async def order_placement(order: NumericalOrder | FractionalOrder, response: Response) -> Any:
         """
         Place a single fractional or numerical order.
         """
-        results: List[OrderResult]
+        results: List[NumericalOrderResult]
         results, _ = await place_orders(schwab_service, [order])
 
         if results[0].status == "FAILED":
@@ -100,13 +100,13 @@ def create_order_endpoints(schwab_service: SchwabService):
     @order_router.post(
         "/orders/batch",
         status_code=status.HTTP_201_CREATED,
-        response_model=GenericCollectionResponse[OrderResult]
+        response_model=GenericCollectionResponse[NumericalOrderResult]
     )
     async def order_placement_batch(orders: List[NumericalOrder | FractionalOrder], response: Response) -> Any:
         """
         Place a batch of fractional or numerical orders.
         """
-        results: List[OrderResult]
+        results: List[NumericalOrderResult]
         count: Dict[str, int]
         results, count = await place_orders(schwab_service, orders)
 

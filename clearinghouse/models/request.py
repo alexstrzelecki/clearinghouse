@@ -89,6 +89,7 @@ class NumericalOrder(BaseOrder):
     def to_upper(cls, data):
         return _to_upper(["instruction", "symbol", "order_type", "duration", "asset_type"], data)
 
+
 class FractionalOrder(BaseOrder):
     """
     Order representing a fractional share of a portfolio (e.g. make SPY 0.5% of default trading portfolio)
@@ -102,6 +103,7 @@ class FractionalOrder(BaseOrder):
     @classmethod
     def to_upper(cls, data):
         return _to_upper(["fraction", "symbol", "order_type", "duration", "asset_type"], data)
+
 
 class AdjustmentOrder(BaseOrder):
     """

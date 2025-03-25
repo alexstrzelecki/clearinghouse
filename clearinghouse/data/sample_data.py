@@ -48,8 +48,8 @@ ACCOUNT_DETAILS_ALL = {
                 "agedQuantity": 0,
                 "instrument": {
                     "cusip": "594918104",
-                    "symbol": "MSFT",
-                    "description": "Microsoft Corp.",
+                    "symbol": "AMD",
+                    "description": "AMD",
                     "instrumentId": 2,
                     "netChange": -1.0,
                     "type": "EQUITY"

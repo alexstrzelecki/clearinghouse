@@ -121,7 +121,7 @@ def test_get_bulk_quotes(client):
     """
     Test for POST /v1/quotes
     """
-    symbols = ["AAPL", "GOOGL"]
+    symbols = ["AAPL", "AMD"]
     resp = client.post(f"/{VERSION}/quotes", json=symbols)
     assert_meta_structure(resp.json(), "QuotesList")
     assert resp.status_code == 200
@@ -291,7 +291,7 @@ def test_adjust_position_multi_item_all_processed(client):
             "adjustment": 0.5
         },
         {
-            "symbol": "GOOGL",
+            "symbol": "AMD",
             "price": 2800.0,
             "order_type": "LIMIT",
             "duration": "DAY",

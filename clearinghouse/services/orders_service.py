@@ -31,7 +31,7 @@ from clearinghouse.models.response import (
     Position,
     AdjustmentOrderResult,
     InitialOrderStatus,
-    OrderResult,
+    NumericalOrderResult,
 )
 from clearinghouse.services.status_service import fetch_account_status
 from clearinghouse.exceptions import ForbiddenException, NullPositionException, FailedOrderException
@@ -234,12 +234,13 @@ def _convert_fractional_to_numerical_order(schwab_service: SchwabService, order:
 
 
 # TODO: add overloading for adjustment, regular, and preview order
-async def place_orders(schwab_service: SchwabService, orders: List[NumericalOrder]) -> (List[OrderResult], Dict[str, int]):
+async def place_orders(schwab_service: SchwabService, orders: List[NumericalOrder], preview: bool = False) -> (List[NumericalOrderResult], Dict[str, int]):
     """
     Place multiple orders and return lists of successful and failed orders.
 
     :param schwab_service: Instantiated Schwab service
     :param orders: List of orders to be placed
+    :param preview: Whether to preview the order or actually place it
     :return: Tuple containing lists of successful and failed orders
     """
     if schwab_service.read_only_mode:
@@ -249,14 +250,23 @@ async def place_orders(schwab_service: SchwabService, orders: List[NumericalOrde
     count = {k: 0 for k in get_args(InitialOrderStatus)}
 
     for order in orders:
-        resp = await _place_order(schwab_service, order_to_schwab_order(order).model_dump())
-
-        if resp.status_code == 201:
-            results.append(OrderResult(**order.model_dump(), status="SUCCEEDED"))
-            count["SUCCEEDED"] += 1
+        if order.order_type == "LIMIT" and not order.price:
+            order.price = get_default_limit_price(
+                schwab_service,
+                order.symbol,
+                use_bid=order.instruction=="BUY"
+            )
+        if not preview:
+            resp = await _place_order(schwab_service, order_to_schwab_order(order).model_dump())
+            if resp.status_code == 201:
+                results.append(NumericalOrderResult(**order.model_dump(), status="SUCCEEDED"))
+                count["SUCCEEDED"] += 1
+            else:
+                results.append(NumericalOrderResult(**order.model_dump(), status="FAILED"))
+                count["FAILED"] += 1
         else:
-            results.append(OrderResult(**order.model_dump(), status="FAILED"))
-            count["FAILED"] += 1
+            results.append(NumericalOrderResult(**order.model_dump(), status="PREVIEW"))
+            count["PREVIEW"] += 1
 
     return results, count
 
@@ -344,8 +354,7 @@ def fetch_transaction_details(schwab_service: SchwabService, transaction_id: str
 
 async def adjust_position_fraction(
         schwab_service: SchwabService,
-        symbol: str,
-        fraction: float,
+        order: AdjustmentOrder,
         round_down: bool = False,
         preview: bool = True
 ) -> AdjustmentOrderResult:
@@ -363,21 +372,22 @@ async def adjust_position_fraction(
     :return: Submitted or preview order, or None if no adjustment is needed
     """
     positions: List[Position] = fetch_positions(schwab_service)
-    position = next((p for p in positions if p.symbol == symbol), None)
+    position = next((p for p in positions if p.symbol == order.symbol), None)
 
     if not position:
         return AdjustmentOrderResult(
-            symbol=symbol,
-            adjustment=fraction,
+            symbol=order.symbol,
+            adjustment=order.adjustment,
             quantity=0,
             total_position_size=0,
             status="FAILED",
-            info="No existing position"
+            info="No existing position",
+            instruction="BUY",
         )
     else:
         current_quantity = position.quantity
 
-    target_quantity = current_quantity * (1 + fraction)
+    target_quantity = current_quantity * (1 + order.adjustment)
 
     if round_down:
         target_quantity = int(target_quantity)
@@ -386,38 +396,48 @@ async def adjust_position_fraction(
 
     # Place order if there is a difference
     # TODO: account for short positions -> translation back into Schwab orders
-    # TODO: account for market vs. limit orders - default for setting the price
-    #
-    kwargs = {
-        "symbol": symbol,
-        "quantity": abs(quantity_difference),
-        "instruction": "BUY" if quantity_difference > 0 else "SELL",
-    }
-    total_position_size = kwargs["quantity"] + current_quantity
-    if quantity_difference != 0.0:
-        if not preview:
-            successful_orders: List[NumericalOrder]
-            results, _ = await place_orders(schwab_service, [NumericalOrder(**kwargs)])
-            if results[0].status == "FAILED":
-                return AdjustmentOrderResult(
-                    total_position_size=total_position_size,
-                    status="FAILED",
-                    info="Misc. failure"
-                    **kwargs
-                )
 
+    numerical_order = NumericalOrder(
+        symbol=order.symbol,
+        order_type=order.order_type,
+        duration=order.duration,
+        asset_type=order.asset_type,
+        session=order.session,
+        strategy_type=order.strategy_type,
+        instruction= "BUY" if quantity_difference > 0 else "SELL",
+        quantity=abs(quantity_difference),
+    )
+
+    if quantity_difference != 0.0:
+        results: List[NumericalOrderResult]
+        results, _ = await place_orders(
+            schwab_service,
+            [numerical_order],
+            preview=preview,
+            )
+        if results[0].status == "FAILED":
+            return AdjustmentOrderResult(
+                **results[0].model_dump(),
+                # TODO: calculate the real delta instead of the proposed
+                adjustment=order.adjustment,
+                total_position_size=target_quantity,
+                info="Miscellaneous failure",
+            )
         return AdjustmentOrderResult(
-            total_position_size=total_position_size,
-            adjustment=fraction,
-            status="PREVIEW" if preview else "SUCCEEDED",
-            **kwargs
+            **results[0].model_dump(),
+            total_position_size=target_quantity,
+            adjustment=order.adjustment,
         )
+
+
     else:
+        # TODO: add ignore mode to the orderresult model
         return AdjustmentOrderResult(
-            total_position_size=total_position_size,
-            adjustment=fraction,
+            **order.model_dump(),
+            total_position_size=target_quantity,
             status="IGNORED",
-            **kwargs
+            quantity=0,
+            instruction="BUY"
         )
 
 async def adjust_bulk_positions_fractions(
@@ -442,8 +462,7 @@ async def adjust_bulk_positions_fractions(
     for order in orders:
         processed_order = await adjust_position_fraction(
             schwab_service,
-            symbol=order.symbol,
-            fraction=order.adjustment,
+            order=order,
             round_down=round_down,
             preview=preview,
         )
@@ -451,6 +470,25 @@ async def adjust_bulk_positions_fractions(
         count[processed_order.status] += 1
 
     return results, count
+
+
+def get_default_limit_price(schwab_service: SchwabService, symbol: str, use_bid: bool = True) -> float:
+    """
+    Determine a default price for a limit order if no price is set.
+
+    :param schwab_service: Instantiated Schwab service
+    :param symbol: Symbol for which to fetch the current market price
+    :param use_bid: Whether to use the bid price or ask price
+    :return: Default price for the limit order
+    """
+    quotes = fetch_quotes(schwab_service, [symbol])
+
+    if not quotes:
+        raise ValueError(f"No market data available for symbol: {symbol}")
+
+    # Use the current bid price as the default limit price
+    current_quote: Quote = quotes[0]
+    return current_quote.bid_price if use_bid else current_quote.ask_price
 
 
 def filter_positions(data: List[Position], filter_request: PositionsFilter) -> List[Position]:

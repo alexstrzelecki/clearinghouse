@@ -57,40 +57,44 @@ class StandardOrder(BaseModel):
     session: str
     cancelable: bool
 
-class OrderResult(BaseModel):
+class BaseOrderResult(BaseModel):
     """
-    Model representing the return from a place order or similar request.
-    Does not include the order ID and advanced values due to limitations from the Schwab API. Only returned on
-    subsequent queries.
+    Base model representing common attributes for order results.
     """
     symbol: str
+    price: float | None = 0
+    quantity: float
     order_type: OrderType = Field(default="MARKET")
     duration: OrderDuration = Field(default="DAY")
     asset_type: AssetType = Field(default="EQUITY")
     session: OrderSession = Field(default="NORMAL")
     strategy_type: OrderStrategyType = Field(default="SINGLE")
-    instruction: OrderInstruction
-    quantity: float
-    price: Optional[float] = None
     status: InitialOrderStatus
     info: str = ""
 
 
-class AdjustmentOrderResult(BaseModel):
+class NumericalOrderResult(BaseOrderResult):
+    """
+    Model representing the return from a place order or similar request.
+    """
+    instruction: OrderInstruction
+
+
+class FractionalOrderResult(NumericalOrderResult):
+    """
+    Model representing the return from a fractional order request.
+    The represented fraction is similar, but not necessarily the same, as the input
+    requested fraction.
+    """
+    fraction: float
+
+
+class AdjustmentOrderResult(NumericalOrderResult):
     """
     Model representing the result of an adjustment order.
     """
-    symbol: str
-    order_type: OrderType = Field(default="MARKET")
-    duration: OrderDuration = Field(default="DAY")
-    asset_type: AssetType = Field(default="EQUITY")
-    session: OrderSession = Field(default="NORMAL")
-    strategy_type: OrderStrategyType = Field(default="SINGLE")
     adjustment: float
-    quantity: float  # represents the delta
     total_position_size: float  # represents the new position size
-    status: InitialOrderStatus
-    info: str = ""
 
 
 class Quote(BaseModel):

@@ -206,7 +206,7 @@ class LocalSchwabClient(schwabdev.Client):
         return self._generate_response(sample_data.QUOTES)
 
     def quote(self, symbol_id: str, fields: str = None) -> requests.Response:
-        return self._generate_response({"AMD": sample_data.QUOTES.get("AMD")})
+        return self._generate_response({symbol_id[0]: sample_data.QUOTES.get(symbol_id[0])})
 
     def transaction_details(self, accountHash: str, transactionId: str | int) -> requests.Response:
         return self._generate_response(sample_data.TRANSACTION_DETAILS)
