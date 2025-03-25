@@ -5,11 +5,12 @@ from starlette import status
 
 from clearinghouse.dependencies import SchwabService
 from clearinghouse.models.request import (
-    Order as RequestOrder,
+    NumericalOrder,
     AdjustmentOrder,
     PositionsFilter,
     OrdersFilter,
     TransactionsFilter,
+    FractionalOrder,
 )
 from clearinghouse.models.response import (
     StandardOrder,
@@ -84,7 +85,10 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_201_CREATED,
         response_model=GenericItemResponse[OrderResult]
     )
-    async def order_placement(order: RequestOrder, response: Response) -> Any:
+    async def order_placement(order: NumericalOrder | FractionalOrder, response: Response) -> Any:
+        """
+        Place a single fractional or numerical order.
+        """
         results: List[OrderResult]
         results, _ = await place_orders(schwab_service, [order])
 
@@ -98,9 +102,9 @@ def create_order_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_201_CREATED,
         response_model=GenericCollectionResponse[OrderResult]
     )
-    async def order_placement_batch(orders: List[RequestOrder], response: Response) -> Any:
+    async def order_placement_batch(orders: List[NumericalOrder | FractionalOrder], response: Response) -> Any:
         """
-
+        Place a batch of fractional or numerical orders.
         """
         results: List[OrderResult]
         count: Dict[str, int]

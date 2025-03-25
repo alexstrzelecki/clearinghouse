@@ -1,9 +1,10 @@
-from typing import Dict, List, Optional, get_args
+from typing import Dict, List, Optional, get_args, Final, Set, overload
 import datetime
 from requests import Response
 import logging
 
 import msgspec
+import cachetools
 
 from clearinghouse.dependencies import SchwabService
 import clearinghouse.models.schwab_response as schwab_response
@@ -12,11 +13,11 @@ from clearinghouse.models.shared import (
     OrderStatus,
 )
 from clearinghouse.models.request import (
-    Order,
+    NumericalOrder,
     AdjustmentOrder,
     PositionsFilter,
     OrdersFilter,
-    TransactionsFilter,
+    TransactionsFilter, FractionalOrder,
 )
 from clearinghouse.models.schwab_request import (
     SchwabOrder,
@@ -32,6 +33,7 @@ from clearinghouse.models.response import (
     InitialOrderStatus,
     OrderResult,
 )
+from clearinghouse.services.status_service import fetch_account_status
 from clearinghouse.exceptions import ForbiddenException, NullPositionException, FailedOrderException
 
 
@@ -88,11 +90,12 @@ def fetch_order_details(schwab_service: SchwabService, order_id: str) -> Standar
     return schwab_to_ch_order(decoded_resp)
 
 
-def fetch_positions(schwab_service: SchwabService, **kwargs) -> List[Position]:
+def fetch_positions(schwab_service: SchwabService, symbols: Optional[Set[str]] = None, **kwargs) -> List[Position]:
     """
     Retrieve a list of positions for the given account.
 
     :param schwab_service: Instantiated Schwab service
+    :param symbols: Optional list of symbols to filter positions by
     :return: List of positions
 
     TODO: kwargs to real filters
@@ -101,6 +104,8 @@ def fetch_positions(schwab_service: SchwabService, **kwargs) -> List[Position]:
     decoded_resp: List[schwab_response.SchwabPosition] = (
         msgspec.json.decode(resp.text, type=List[schwab_response.SchwabPosition]))
 
+    if symbols:
+        decoded_resp = [p for p in decoded_resp if p.instrument.symbol in symbols]
     return [schwab_to_ch_position(p) for p in decoded_resp]
 
 
@@ -119,8 +124,117 @@ async def _place_order(schwab_service: SchwabService, order: Dict) -> Response:
     )
 
 
+def fetch_total_account_value(schwab_service: SchwabService, longs: bool = True, shorts: bool = True, **kwargs) -> float:
+    """
+    Get the total account value of the default trading account. Can filter by longs or shorts
+    to get a narrowed version (e.g. liquidationValue, shortBalance, longStockValue)
+    """
+    account_status = fetch_account_status(schwab_service)
+    account_value = 0
+
+    # TODO: confirm the attr definitions from Schwab API
+    if longs and shorts:
+        account_value = account_status.current_balances.get("liquidationValue", 0)
+
+    if longs:
+        account_value = account_status.current_balances.get("longMarketValue", 0)
+
+    if shorts:
+        account_value = account_status.current_balances.get("shortMarketValue", 0)
+
+    if account_value == 0:
+        logging.warning("Account value appearing as 0 - confirm manually")
+
+    return account_value
+
+@overload
+def calculate_account_fraction(schwab_service: SchwabService, *, position: Position) -> float:
+    ...
+
+@overload
+def calculate_account_fraction(schwab_service: SchwabService, *, symbol: str) -> float:
+    ...
+
+def calculate_account_fraction(
+    schwab_service: SchwabService,
+    position: Optional[Position] = None,
+    symbol: Optional[str] = None
+) -> float:
+    """
+    Calculate the current account fraction of a symbol or position.
+    Either 'position' or 'symbol' must be provided, but not both.
+    """
+    if position is None and symbol is None:
+        raise ValueError("Either 'position' or 'symbol' must be provided.")
+
+    if position is not None and symbol is not None:
+        raise ValueError("Only one of 'position' or 'symbol' should be provided.")
+
+    # Fetch positions if only symbol is provided
+    if symbol is not None:
+        positions = fetch_positions(schwab_service, symbols={symbol})
+        position = positions[0] if positions else None
+
+    if not position:
+        return 0.0
+
+    # Example calculation logic (replace with actual logic)
+    total_account_value = 1000  # TODO: calculate this using a combination of longMarketValue, equity, etc.
+    return position.market_value / total_account_value if total_account_value > 0 else 0.0
+
+
+def _convert_fractional_to_numerical_order(schwab_service: SchwabService, order: FractionalOrder) -> NumericalOrder:
+    """
+    Realize a fractional portfolio request into an order that the Schwab API can accept.
+
+    :param order: FractionalOrder object containing the desired fractional position
+    :return: NumericalOrder object ready for submission to the Schwab API
+    """
+    # get current account value
+
+    # get current positional value and determine if it needs to be a sell/buy order
+
+    # get quote for the current price
+
+    # convert the delta into an actual order
+
+
+    # Get current positions
+    positions = fetch_positions(schwab_service, {})
+    position = next((p for p in positions if p.symbol == order.symbol), None)
+
+    # If no current position, assume zero
+    current_quantity = position.quantity if position else 0
+
+    # Get the current quote for the symbol
+    quotes = fetch_quotes(schwab_service, [order.symbol])
+    current_price = quotes[0].price if quotes else 0
+
+    # Calculate the target quantity based on the fractional order
+    target_quantity = order.fraction * (current_quantity * current_price)
+
+    # Determine the quantity difference
+    quantity_difference = target_quantity - current_quantity
+
+    # Determine the instruction (buy/sell) based on the quantity difference
+    instruction: Final[str] = "BUY" if quantity_difference > 0 else "SELL"
+
+    # Create a NumericalOrder based on the calculated values
+    numerical_order = NumericalOrder(
+        symbol=order.symbol,
+        quantity=abs(quantity_difference),
+        instruction=instruction,
+        price=current_price,
+        order_type="LIMIT",  # Assuming limit order; adjust as necessary
+        duration="DAY",      # Assuming day order; adjust as necessary
+        session="NORMAL"     # Assuming normal session; adjust as necessary
+    )
+
+    return numerical_order
+
+
 # TODO: add overloading for adjustment, regular, and preview order
-async def place_orders(schwab_service: SchwabService, orders: List[Order]) -> (List[OrderResult], Dict[str, int]):
+async def place_orders(schwab_service: SchwabService, orders: List[NumericalOrder]) -> (List[OrderResult], Dict[str, int]):
     """
     Place multiple orders and return lists of successful and failed orders.
 
@@ -283,8 +397,8 @@ async def adjust_position_fraction(
     total_position_size = kwargs["quantity"] + current_quantity
     if quantity_difference != 0.0:
         if not preview:
-            successful_orders: List[Order]
-            results, _ = await place_orders(schwab_service, [Order(**kwargs)])
+            successful_orders: List[NumericalOrder]
+            results, _ = await place_orders(schwab_service, [NumericalOrder(**kwargs)])
             if results[0].status == "FAILED":
                 return AdjustmentOrderResult(
                     total_position_size=total_position_size,
@@ -389,7 +503,7 @@ def filter_transactions(data: List[Transaction], filter_request: TransactionsFil
     return filtered_data
 
 
-def filter_orders(data: List[Order], filter_request: OrdersFilter) -> List[Order]:
+def filter_orders(data: List[NumericalOrder], filter_request: OrdersFilter) -> List[NumericalOrder]:
     """
     Filter orders by input parameters. Parameters not included here are done natively by the Schwab client.
 
@@ -433,7 +547,7 @@ def schwab_to_ch_position(position: schwab_response.SchwabPosition) -> Position:
         market_value=position.market_value,
         entry_value=entry_value,
         net_change=position.instrument.net_change,
-        account_fraction=0,  # TODO: Add this as a calculated value
+        # account_fraction=calculate_account_fraction(schwab_service, position=position),
     )
 
 
@@ -499,7 +613,7 @@ def schwab_to_ch_order(order: schwab_response.Order) -> StandardOrder:
     )
 
 
-def order_to_schwab_order(order: Order) -> SchwabOrder:
+def order_to_schwab_order(order: NumericalOrder) -> SchwabOrder:
     """
     Convert a simplified Order Request to a Schwab API-compliant SchwabOrder object.
 

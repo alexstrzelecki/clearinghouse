@@ -2,7 +2,7 @@ from typing import List, Generic, TypeVar, Literal
 import datetime
 from pydantic import BaseModel
 
-from clearinghouse.models.request import AdjustmentOrder, Order
+from clearinghouse.models.request import AdjustmentOrder, NumericalOrder
 
 
 T = TypeVar("T", bound=BaseModel)
@@ -51,7 +51,7 @@ class StandardOrder(BaseModel):
     cancelable: bool
 
 
-class OrderResult(Order):
+class OrderResult(NumericalOrder):
     """
     Model representing the return from a place order or similar request.
     Does not include the order ID and advanced values due to limitations from the Schwab API. Only returned on
@@ -111,4 +111,4 @@ class Position(BaseModel):
     market_value: float
     entry_value: float
     net_change: float
-    account_fraction: float
+    account_fraction: float = 0

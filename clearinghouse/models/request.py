@@ -63,7 +63,10 @@ class BaseOrder(BaseModel):
     def to_upper(cls, data):
         return _to_upper(["symbol", "order_type", "duration", "asset_type"], data)
 
-class Order(BaseOrder):
+class NumericalOrder(BaseOrder):
+    """
+    Standard order representing quantities and options to buy/close/short etc.
+    """
     instruction: OrderInstruction
     quantity: float
 
@@ -78,6 +81,20 @@ class Order(BaseOrder):
     @classmethod
     def to_upper(cls, data):
         return _to_upper(["instruction", "symbol", "order_type", "duration", "asset_type"], data)
+
+class FractionalOrder(BaseOrder):
+    """
+    Order representing a fractional share of a portfolio (e.g. make SPY 0.5% of default trading portfolio)
+    The actual fraction will be approximately similar to the request depending on individual share pricing for the
+    requested symbol.
+    """
+    fraction: float
+
+    # noinspection PyNestedDecorators
+    @model_validator(mode="before")
+    @classmethod
+    def to_upper(cls, data):
+        return _to_upper(["fraction", "symbol", "order_type", "duration", "asset_type"], data)
 
 class AdjustmentOrder(BaseOrder):
     """

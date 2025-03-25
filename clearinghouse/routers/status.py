@@ -19,7 +19,7 @@ def create_status_endpoints(schwab_service: SchwabService):
         status_code=status.HTTP_200_OK,
         response_model=GenericCollectionResponse[Dict[str, str]]
     )
-    def get_linked_accounts() -> Dict[str, Any]:
+    def get_linked_accounts() -> Any:
         """
         Mirrors the Schwab API endpoint for retrieving linked and authorized accounts.
         :return:
