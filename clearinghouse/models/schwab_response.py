@@ -47,16 +47,11 @@ class Instrument(msgspec.Struct, kw_only=True):
     closing_price: float | None = msgspec.field(default=None, name="closingPrice")
 
 
-class AccountPosition(msgspec.Struct):
-    aggregated_balance: Dict[str, float] = msgspec.field(name="aggregatedBalance")
-    securities_account: SecuritiesAccount = msgspec.field(name="securitiesAccount")
-
-
 class SecuritiesAccount(msgspec.Struct):
-    current_balances: Dict[str, float] = msgspec.field(name="currentBalances")
+    # Fields omitted
+    current_balances: Dict[str, Any] = msgspec.field(name="currentBalances")
     initial_balances: Dict[str, Any] = msgspec.field(name="initialBalances")
     positions: list[SchwabPosition]
-    type: str
 
 
 class SchwabPosition(msgspec.Struct, kw_only=True):

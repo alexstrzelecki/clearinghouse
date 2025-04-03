@@ -1,4 +1,4 @@
-from typing import List, Generic, TypeVar, Literal, Optional
+from typing import List, Generic, TypeVar, Literal, Optional, Dict, Any
 import datetime
 from pydantic import BaseModel, Field
 
@@ -36,6 +36,12 @@ class GenericItemResponse(BaseResponse[T]):
 
 class GenericCollectionResponse(BaseResponse[T]):
     data: List[T]
+
+
+class AccountDetails(BaseModel):
+    # omits positions
+    current_balances: Dict[str, Any]
+    initial_balances: Dict[str, Any]
 
 
 class StandardOrder(BaseModel):

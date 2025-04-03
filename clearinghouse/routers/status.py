@@ -6,9 +6,13 @@ from starlette import status
 from clearinghouse.dependencies import SchwabService
 from clearinghouse.models.response import (
     GenericCollectionResponse,
-    GenericItemResponse
+    GenericItemResponse,
+    AccountDetails,
 )
 from clearinghouse.services.response_generation import generate_generic_response
+from clearinghouse.services.status_service import (
+    fetch_account_status,
+)
 
 
 def create_status_endpoints(schwab_service: SchwabService):
@@ -52,22 +56,15 @@ def create_status_endpoints(schwab_service: SchwabService):
         #
         # return resp.json()
 
-        return {}
+        return generate_generic_response("AccountDetailsList", [])
 
     @status_router.get(
-        "/accounts/{account_hash}",
+        "/accounts/default",
         status_code=status.HTTP_200_OK,
-        response_model=GenericItemResponse[Dict[str, Any]]  # TODO: clarify what the Schwab response is
+        response_model=GenericItemResponse[AccountDetails]
     )
-    def get_account_details(account_hash: str):
-        # TODO: support all additional arguments for account details
-        resp = schwab_service.client.account_details(accountHash=account_hash)
-        if not resp.ok:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve account details from Schwab service."
-            )
-
-        return generate_generic_response("AccountDetails", resp.json())
+    def get_account_details() -> Any:
+        data = fetch_account_status(schwab_service)
+        return generate_generic_response("AccountDetails", data)
 
     return status_router
